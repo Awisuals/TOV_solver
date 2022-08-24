@@ -164,7 +164,7 @@ def unit_conversion(SYS, VAR, VAL, DIR):
     return VAL
 
 
-def polytrope_constants(r0, rho_c, n):
+def gamma_from_n(n):
     """
     Returns constant of proportionality that
     emerges in astrophysical polytrope equation.
@@ -185,9 +185,15 @@ def polytrope_constants(r0, rho_c, n):
         constant of proportionality
 
     """
-    K = (r0**2*4*np.pi*rho_c**(1+1/n))/(n+1)
-    G = (n+1)/n
-    return K, G
+    return (n+1)/n
+
+
+def kappa_from_r0rho0n(r0, rho0, n):
+    return (r0**2*4*np.pi*rho0**(1+1/n))/(n+1)
+
+
+def kappa_from_p0rho0(p0, rho0, G):
+    return (p0)/(rho0**G)
 
 
 def find_radius(p_t, r_t, raja=0):
@@ -306,7 +312,7 @@ def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
         p = p_values0[a]
         rho = rho_values0[a]
     else:
-        rho = rho
+        rho = rho0
         p = p0
     m = 4./3.*np.pi*rho*rmin**3
     return m, p, rho
@@ -321,6 +327,10 @@ Määritetään Tolman-Oppenheimer-Volkoff - yhtälöt, jotka ratkaisemalla
 saadaan kuvattua tähden rakenne.
 
 """
+
+
+def EoS_CUSTOMDATA_p2rho(interpolation, p_point):
+    return interpolation(p_point)
 
 
 def EoS_r2p(rho, Gamma, Kappa):
@@ -374,7 +384,7 @@ def EoS_p2r(p, Gamma, Kappa):
     return rho
 
 
-def TOV(r, y, K, G):
+def TOV(r, y, K, G, rho_EoS, xdata=0, ydata=0, choice=True):
     """
     Määritellään TOV-yhtälöt ja palautetaan ne taulukossa.
 
@@ -393,8 +403,11 @@ def TOV(r, y, K, G):
     """
     m = y[0]                            # Asetetaan muuttujat taulukkoon
     p = y[1]
-    rho = EoS_p2r(p, G, K)      # WD:n energiatiheys rho_eos[0]
-    # rho = NS_EoS_P2rho(p)             # NS:n energiatiheys
+    rho = rho_EoS(p)
+    # if choice:                      # TODO Erillinen funktio rho:n kutsumiselle?
+    #     rho = EoS_p2r(p, G, K)      # WD:n energiatiheys rho_eos[0]
+    # else:
+    #     rho = EoS_CUSTOMDATA_p2rho(func, p)
 
     dy = np.empty_like(y)
     dy[0] = 4*np.pi*rho*r**2                            # Massa säteen sisällä
@@ -404,12 +417,12 @@ def TOV(r, y, K, G):
     return dy
 
 
-def found_radius(t, y, dump1, dump2):
+def found_radius(t, y, d1, d2, d3, d4, d5, d6):
     """
     Event function: Zero of pressure
     ODE integration stops when this function returns True
     """
-    dump1, dump2 = dump1, dump2
+    d1, d2, d3, d4, d5, d6 = d1, d2, d3, d4, d5, d6
     return y[1].real
 
 
@@ -428,6 +441,9 @@ konversio J/m3 -> 1.1036e-26 g/cm3
 Valkoinen kääpiö (geom. units):
     R0 = ~R_earth = 6e6
     rho_c = ~1e-10
+
+Neutronitähti (geom. units):
+    R0 = ~10km = 10000m
 
 REL (TOV):
     n = 3
@@ -456,8 +472,10 @@ Metodi:
 LCGS = 1.476701332464468e+05
 CONV_jmc2gcmc = 1.1036e-26      # Konversiokerroin 1 J/m3 = 1.1036e-26 g/cm3
 M_sun = 2e30                  # kg
-R_earth = 6e6               # m
+R_WD0 = 6e6               # m
 WD_rho_c = 1e-10
+R_NS0 = 10000  # m
+
 c = 1
 G = 1
 
@@ -470,9 +488,45 @@ rspan = np.linspace(rmin, rmax, N)
 r0, rf = rmin, rmax               # Otetaan rspan ääriarvot.
 
 
-def SOLVE_TOV(R_body, n, a=0, rho_cK=0, rho_c=0, p_c=0):
+def SOLVE_TOV(n, R_body=0, rho_K=0, p_K=0,
+              rho_c=0, p_c=0, a=0, xdata=0, ydata=0, choice=True,
+              interpolate=0):
+    """
 
-    Kappa, Gamma = polytrope_constants(R_body, rho_cK, n)
+
+    Parameters
+    ----------
+    R_body : TYPE
+        DESCRIPTION.
+    n : TYPE
+        DESCRIPTION.
+    rho_K : TYPE, optional
+        DESCRIPTION. The default is 0.
+    p_K : TYPE, optional
+        DESCRIPTION. The default is 0.
+    rho_c : TYPE, optional
+        DESCRIPTION. The default is 0.
+    p_c : TYPE, optional
+        DESCRIPTION. The default is 0.
+    a : TYPE, optional
+        DESCRIPTION. The default is 0.
+
+    Returns
+    -------
+    r : TYPE
+        DESCRIPTION.
+    m : TYPE
+        DESCRIPTION.
+    p : TYPE
+        DESCRIPTION.
+    rho : TYPE
+        DESCRIPTION.
+
+    """
+
+    Gamma = gamma_from_n(n)
+    Kappa = kappa_from_p0rho0(p_K, rho_K, Gamma)
+    # Kappa = 30+0j # kappa_from_r0rho0n(R_body, rho_K, n)
     m, p, rho = set_initial_conditions(r0, Gamma, Kappa, rho_c, p_c, a)
     y0 = m, p
 
@@ -482,7 +536,7 @@ def SOLVE_TOV(R_body, n, a=0, rho_cK=0, rho_c=0, p_c=0):
 
     soln = solve_ivp(TOV, (r0, rf), y0, method='BDF',
                      dense_output=True, events=found_radius,
-                     args=(Kappa, Gamma))
+                     args=(Kappa, Gamma, xdata, ydata, choice, interpolate))
 
     print("Solverin parametreja:")
     print(soln.nfev, 'evaluations required')
@@ -492,11 +546,10 @@ def SOLVE_TOV(R_body, n, a=0, rho_cK=0, rho_c=0, p_c=0):
 
     # Määritellään muuttujat taulukkoon.
     # Ratkaisut yksiköissä [m] = kg, [p] = m**-2 ja [rho] = m**-2
-    # Muutetaan ratkaisun yksiköt SI-yksiköihin.
-    # TODO korjaa rhon yksiköt ja tarkista säteen yksiköt
+    # TODO Tarkista säteen yksiköt
     r = soln.t  # * LCGS * 1e-5 # km(?)
-    m = unit_conversion(0, "M", soln.y[0].real, 1)
-    p = unit_conversion(0, "P", soln.y[1].real, 1)
+    m = soln.y[0].real
+    p = soln.y[1].real
     rho = EoS_p2r(p, Gamma, Kappa)
 
     print("Saadut TOV ratkaisut: \n")
@@ -504,10 +557,12 @@ def SOLVE_TOV(R_body, n, a=0, rho_cK=0, rho_c=0, p_c=0):
           "\n Paine: \n" + str(p) + "\n Energiatiheys: \n" + str(rho))
     print("\n \n")
 
-    # Piirretään ratkaisun malli kuvaajiin.
-    graph(r, m, plt.plot, "massa", "säde, r", "massa, m", 'linear')
-    graph(r, p, plt.plot, "paine", "säde, r", "paine, p", 'linear')
-    graph(r, rho, plt.plot,
+    # Piirretään ratkaisun malli kuvaajiin SI-yksiköissä.
+    graph(r, unit_conversion(0, "M", m, 1),
+          plt.plot, "massa", "säde, r", "massa, m", 'linear')
+    graph(r, unit_conversion(0, "P", p, 1),
+          plt.plot, "paine", "säde, r", "paine, p", 'linear')
+    graph(r, unit_conversion(0, "RHO", rho, 1), plt.plot,
           f'energiatiheys, \n rho_c = {rho_c.real} \n' +
           f'Kappa={Kappa.real}\n Gamma={Gamma}',
           "säde, r", "energiatiheys, rho", 'linear')
@@ -516,7 +571,7 @@ def SOLVE_TOV(R_body, n, a=0, rho_cK=0, rho_c=0, p_c=0):
 
 
 # Ratkaistaan TOV valkoisen kääpiön alkuarvoille:
-SOLVE_TOV(R_earth, 3, rho_cK=1e-10+0j, rho_c=1e-16+0j)
+# SOLVE_TOV(R_WD0, 3, rho_K=1e-10+0j, rho_c=1e-16+0j)
 
 
 # %%
@@ -611,110 +666,90 @@ Tilanyhtälöiden muuttujat datasta:
 
 """
 
-# Neutronitähden sisemmän kuoren tilanyhtälön
-# ratkaistuja parametreja.
-NS_Eos_ic = pd.read_csv(
-    'NT_EOS_inner_crust.txt', sep=";", header=None)
-
-NS_EoS__ic_n_b = NS_Eos_ic[0].values
-NS_EoS__ic_rho = NS_Eos_ic[1].values
-NS_EoS__ic_P = NS_Eos_ic[2].values
-NS_EoS__ic_Gamma = NS_Eos_ic[3].values
-
 # Neutronitähden ytimen tilanyhtälön
 # ratkaistuja parametreja.
 NS_Eos_core = pd.read_csv(
     'NT_EOS_core.txt', sep=";", header=None)
 
-NS_EoS__core_n_b = NS_Eos_core[0].values
-NS_EoS__core_rho = NS_Eos_core[1].values
-NS_EoS__core_P = NS_Eos_core[2].values
-NS_EoS__core_Gamma = NS_Eos_core[3].values
+NS_EoS_core_n_b = NS_Eos_core[0].values
+NS_EoS_core_rho = NS_Eos_core[1].values
+NS_EoS_core_P = NS_Eos_core[2].values
+NS_EoS_core_Gamma = NS_Eos_core[3].values
+
+# Neutronitähden sisemmän kuoren tilanyhtälön
+# ratkaistuja parametreja.
+NS_Eos_ic = pd.read_csv(
+    'NT_EOS_inner_crust.txt', sep=";", header=None)
+
+NS_EoS_ic_n_b = NS_Eos_ic[0].values
+NS_EoS_ic_rho = NS_Eos_ic[1].values
+NS_EoS_ic_P = NS_Eos_ic[2].values
+NS_EoS_ic_Gamma = NS_Eos_ic[3].values
+
+# Neutronitähden ulomman kuoren ratkaistu tilanyhtälö
+# paperista otetuilla alkuarvoilla
+
+NS_EoS_oc_r, NS_EoS_oc_m, NS_EoS_oc_P, NS_EoS_oc_RHO = SOLVE_TOV(
+    3,
+    R_body=R_NS0,
+    rho_K=2.5955e-13+0j,
+    p_K=5.13527e-16,
+    p_c=5.13527e-16,
+    a=1)
 
 # Yhdistetään sisemmän kuoren ja ytimen
 # energiatiheys ja paine. Käännetään taulukot myös
-# alkamaan ytimestä.
+# alkamaan ytimestä. Paine ja energiatiheyden yksiköt: [p] = [rho] = m**-2
 
 # Energiatiheys
-NS_EoS_ic_core_rho = unit_conversion(0, "RHO",
-                                     np.flip(np.append(NS_EoS__ic_rho,
-                                                       NS_EoS__core_rho) * 7.4261e-25, -1), 1) 
-# print("energiatiheys")
-# print(NS_EoS_ic_core_rho + len(NS_EoS_ic_core_rho))
-# find_duplicates(NS_EoS_ic_core_rho)
-# print(NS_EoS_ic_core_rho + len(NS_EoS_ic_core_rho))
+NS_EoS_ic_core_rho = np.flip(np.append(
+        NS_EoS_ic_rho, NS_EoS_core_rho) * 7.4261e-25, -1)
 
-# Kerrotaan painetta konversiokertoimella 1.1036e-27,
-# jotta saadaan energiatiheydelle ja paineelle samat yksiköt g/cm**3
-
-# Paine, MUUTETAAN DUPLIKAATIN DATA TEKSTITIEDOSTOSSA
-# TODO: MUUTA DATA OIKEAKSI
+# TODO: MUUTA DATA OIKEAKSI - MUUTETAAN DUPLIKAATIN DATA TEKSTITIEDOSTOSSA
 # MUUTETTU INDEKSI ON NT_EOS_CORE.txt ENSIMMÄINEN PAINE
-NS_EoS_ic_core_P = unit_conversion(0, "P",
-                                   np.flip(np.append(NS_EoS__ic_P,
-                                                     NS_EoS__core_P) * 8.2627e-46, -1), 1)
-# print("Paine")
-# print(NS_EoS_ic_core_P + len(NS_EoS_ic_core_P))
-# find_duplicates(NS_EoS_ic_core_P)
-# print(NS_EoS_ic_core_P + len(NS_EoS_ic_core_P))
+NS_EoS_ic_core_P = np.flip(np.append(
+        NS_EoS_ic_P, NS_EoS_core_P) * 8.2627e-46, -1)
 
 # Plotataan paine ja energiatiheys kuvaaja (rho, P) tutkimuspaperista.
-graph(NS_EoS_ic_core_P, NS_EoS_ic_core_rho, plt.scatter, "NS EoS, (P, rho)",
+graph(NS_EoS_ic_core_P, NS_EoS_ic_core_rho, plt.scatter, "NS EoS, (P, rho) - ic-core",
       "Paine, P", "Energiatiheys, rho", 'log')
 
-# Määritetään interpoloitu funktio alkuperäiselle datalle
-f = interp1d(NS_EoS_ic_core_P, NS_EoS_ic_core_rho, kind='cubic')
+# Yhdistetään paperin data ja ratkaistu polytrooppi NS:n
+# ulommaksi kuoreksi. Tulostetaan sitten.
+NS_EoS_P = np.flip(np.unique(np.delete(
+    np.append(NS_EoS_ic_core_P.real, NS_EoS_oc_P.real), -1)), -1)
+NS_EoS_RHO = np.flip(np.unique(np.delete(
+    np.append(NS_EoS_ic_core_rho.real, NS_EoS_oc_RHO.real), -1)), -1)
+
+graph(NS_EoS_P, NS_EoS_RHO, plt.scatter, "NS EoS, (P, rho)",
+      "Paine, P", "Energiatiheys, rho", 'log')
 
 
-def NS_EoS_P2rho(P_point):
-    """
-    Neutronitähden tilanyhtälö. Palauttaa energiatiheyden
-    annettaessa paineen.
-
-    Parameters
-    ----------
-    P_point : float OR array of floats
-        Paine.
-
-    Returns
-    -------
-    float OR array of floats
-        Palauttaa energiatiheyden annetussa pistejoukossa.
-
-    """
-    return f(P_point)
-
+# Määritetään interpoloitu funktio NS:n (p, rho)-datalle.
+NS_EoS_interpolate = interp1d(NS_EoS_P, NS_EoS_RHO, kind='cubic', bounds_error=False)
 
 # Määritetään x-akselin paineen arvoille uusi tiheys
-NS_EoS_ic_core_P_new = np.logspace(
-    np.log10(NS_EoS_ic_core_P[0]), np.log10(NS_EoS_ic_core_P[-1]), 10000)
+NS_EoS_P_new = np.logspace(np.log10(NS_EoS_P[0]),
+                           np.log10(NS_EoS_P[-1]), 1000)
 
 # Piirretään interpoloidut datapisteet.
-graph(NS_EoS_ic_core_P_new, f(NS_EoS_ic_core_P_new), plt.scatter,
+graph(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new), plt.plot,
       "NS EoS, (rho, P) interpolate", "Paine, P", "Energiatiheys, rho", 'log')
 
 # Tulostetaan NS:n paine ja energiatiheys konsoliin.
-print("Neutronitähden energiatiheys ja paine ytimestä")
-print(NS_EoS_P2rho(NS_EoS_ic_core_P_new), NS_EoS_ic_core_P_new)
+# print("Neutronitähden energiatiheys ja paine ytimestä: \n")
+# print(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new))
 
-# Määrätään alkuarvot TOV:n ratkaisulle
-NS_p0 = NS_EoS_ic_core_P_new[0]
-NS_rho_c = NS_EoS_ic_core_rho[0]
-NS_m0 = 4./3.*np.pi*NS_rho_c*rmin**3
-NS_y0 = NS_m0, NS_p0
+# Ratkaistaan Neutronitähden tilanyhtälö ja mallinnetaan sen rakenne.
+NS_r, NS_m, NS_p, NS_rho = SOLVE_TOV(
+    3,
+    rho_K=NS_EoS_interpolate(NS_EoS_P_new[-2])+0j,
+    p_K=NS_EoS_P_new[-1],
+    rho_c=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
+    p_c=NS_EoS_P_new[1],
+    xdata=NS_EoS_P,
+    ydata=NS_EoS_RHO,
+    a=2,
+    choice=False)
 
-# Ratkaistaan TOV ja mallinnetaan NS:n rakenne.
-sol_NS = solve_ivp(TOV, (r0, rf), NS_y0, method='BDF', dense_output=True,
-                   events=found_radius)
 
-# Ratkaisut
-NS_r_stiff = sol_NS.t * LCGS * 1e-6  # km(?)
-NS_m = sol_NS.y[0].real
-NS_p = sol_NS.y[1].real
-NS_rho = NS_EoS_P2rho(NS_p)
-
-# NS:n malli kuvaajissa
-graph(NS_m, NS_r_stiff, plt.plot, "Massa säteen funktiona", "Säde", "Massa")
-graph(NS_p, NS_r_stiff, plt.plot, "Paine säteen funktiona", "Säde", "Paine")
-graph(NS_m, NS_r_stiff, plt.plot, "Energiatiheys säteen funktiona", "Säde",
-      "Eenrgiatiheys")
