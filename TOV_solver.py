@@ -100,13 +100,14 @@ def unit_conversion(SYS, VAR, VAL, DIR):
     Unit system:
         0 for geometrizied units
         1 for natural units
+        2 for [p]=erg/cm**3 and [rho]=g/cm**3 -> GEOM.
 
     Possible conversion apply for:
         M, P and RHO.
 
     Directions:
-        1: from geom. to SI.
-        -1: from SI to geom.
+        1: from SYS. to SI. MULTIPLY
+        -1: from SI to SYS. DIVIDE
 
     Parameters
     ----------
@@ -124,7 +125,8 @@ def unit_conversion(SYS, VAR, VAL, DIR):
     """
     VAR_TAU = ["M", "P", "RHO"]
     SYS_CON = [[1.3466e27, 1.2102e44, 1.2102e44],
-               [1.7827e-27, 2.0852e37, 2.0852e37]]
+               [1.7827e-27, 2.0852e37, 2.0852e37],
+               [1, 8.2627e-46, 7.4261e-25]]
     VAR_CON = SYS_CON[SYS]
     for i, var in enumerate(VAR_TAU):
         if VAR == var and DIR == 1:
@@ -561,8 +563,8 @@ def SOLVE_TOV(n, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     rho = EoS_p2r(p, Gamma, Kappa)
 
     print("Saadut TOV ratkaisut: \n")
-    print("Säde: \n" + str(r) + "\n Massa: \n" + str(m) +
-          "\n Paine: \n" + str(p) + "\n Energiatiheys: \n" + str(rho))
+    print("Säde: \n" + str(r.real) + "\n Massa: \n" + str(m.real) +
+          "\n Paine: \n" + str(p.real) + "\n Energiatiheys: \n" + str(rho.real))
     print("\n \n")
 
     # Piirretään ratkaisun malli kuvaajiin SI-yksiköissä.
@@ -571,8 +573,9 @@ def SOLVE_TOV(n, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     graph(r, unit_conversion(0, "P", p, 1),
           plt.plot, "paine", "säde, r", "paine, p", 'linear')
     graph(r, unit_conversion(0, "RHO", rho, 1), plt.plot,
-          f'energiatiheys, \n rho_c = {rho_c.real} \n' +
-          f'Kappa={Kappa.real}\n Gamma={Gamma}',
+          fr'$\rho_c$ = {rho_c.real}' '\n'
+          fr'$K$ = {Kappa.real}' '\n' 
+          fr'$\Gamma$ = {Gamma}',
           "säde, r", "energiatiheys, rho", 'linear')
 
     return r, m, p, rho
@@ -609,7 +612,7 @@ def MR_relaatio(rho_min, rho_max):
     R = []
     M = []
     for rho0 in rhospan:
-        r, m, p, rho = SOLVE_TOV(R_earth, 3, rho_cK=1e-11+0j, rho_c=rho0)
+        r, m, p, rho = SOLVE_TOV(R_WD0, 3, rho_cK=1e-11+0j, rho_c=rho0)
         r_boundary = find_radius(p, r, raja=0)
         m_boundary = find_mass_in_radius(m, r, r_boundary)
         R.append(r_boundary)
@@ -652,7 +655,7 @@ def Ricci_scalar(p, rho, r):
     None.
 
     """
-    R_scalar = 8*np.pi*(rho - 3*p)      # G = 1
+    R_scalar = -8*np.pi*(rho - 3*p)
     graph(r, R_scalar, plt.plot,
           "Avaruuden kaarevuus", "Säde, r", "Riccin skalaari, R", 'linear')
 
@@ -711,13 +714,13 @@ NS_EoS_oc_r, NS_EoS_oc_m, NS_EoS_oc_P, NS_EoS_oc_RHO = SOLVE_TOV(
 # yksiköt: [p] = [rho] = m**-2
 
 # Energiatiheys
-NS_EoS_ic_core_rho = np.flip(np.append(
-        NS_EoS_ic_rho, NS_EoS_core_rho) * 7.4261e-25, -1)
+NS_EoS_ic_core_rho = unit_conversion(2, "RHO", np.flip(np.append(
+        NS_EoS_ic_rho, NS_EoS_core_rho), -1), 1)
 
 # TODO: MUUTA DATA OIKEAKSI - MUUTETAAN DUPLIKAATIN DATA TEKSTITIEDOSTOSSA
 # MUUTETTU INDEKSI ON NT_EOS_CORE.txt ENSIMMÄINEN PAINE
-NS_EoS_ic_core_P = np.flip(np.append(
-        NS_EoS_ic_P, NS_EoS_core_P) * 8.2627e-46, -1)
+NS_EoS_ic_core_P = unit_conversion(2, "P", np.flip(np.append(
+        NS_EoS_ic_P, NS_EoS_core_P), -1), 1)
 
 # Plotataan paine ja energiatiheys kuvaaja (rho, P) tutkimuspaperista.
 graph(NS_EoS_ic_core_P, NS_EoS_ic_core_rho, plt.scatter, "NS EoS, (P, rho) - ic-core",
@@ -734,11 +737,12 @@ graph(NS_EoS_P, NS_EoS_RHO, plt.scatter, "NS EoS, (P, rho)",
       "Paine, P", "Energiatiheys, rho", 'log')
 
 # Määritetään interpoloitu funktio NS:n (p, rho)-datalle.
-NS_EoS_interpolate = interp1d(NS_EoS_P, NS_EoS_RHO, kind='cubic', bounds_error=True)
+NS_EoS_interpolate = interp1d(NS_EoS_P, NS_EoS_RHO, kind='cubic',
+                              bounds_error=False,
+                              fill_value=(2.89938e-19, 3.00742e-09))
 
 # Määritetään x-akselin paineen arvoille uusi tiheys
-NS_EoS_P_new = np.logspace(np.log10(NS_EoS_P[0]),
-                            np.log10(NS_EoS_P[-1]), 1000)
+NS_EoS_P_new = np.logspace(np.log10(NS_EoS_P[0]), np.log10(NS_EoS_P[-1]), 1000)
 
 # Piirretään interpoloidut datapisteet.
 graph(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new), plt.plot,
@@ -757,18 +761,8 @@ NS_r, NS_m, NS_p, NS_rho = SOLVE_TOV(
     a=2,
     interpolation=NS_EoS_interpolate,
     rho_func=1)
-    
 
-# Ratkaistaan Neutronitähden tilanyhtälö ja mallinnetaan sen rakenne.
-# NS_r, NS_m, NS_p, NS_rho = SOLVE_TOV(
-#     3,
-#     rho_K=NS_EoS_interpolate(NS_EoS_P_new[-2])+0j,
-#     p_K=NS_EoS_P_new[-1],
-#     rho_c=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
-#     p_c=NS_EoS_P_new[1],
-#     xdata=NS_EoS_P,
-#     ydata=NS_EoS_RHO,
-#     a=2,
-#     choice=False)
+Ricci_scalar(NS_p, NS_rho, NS_r)
+
 
 
