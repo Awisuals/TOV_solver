@@ -58,36 +58,6 @@ Yleisiä funktioita hyötykäyttöön.
 """
 
 
-def find_duplicates(arr):
-    """
-    Käy annetun taulukon läpi ja etsii siitä dublikaatit.
-    Löytäessään duplikaatteja funktio summaa pienen luvun
-    jälkimmäiseen alkioon.
-
-    Parameters
-    ----------
-    arr : Array
-        Taulukko.
-
-    Returns
-    -------
-    None.
-
-    """
-    # TODO: KORJAA DUPLIKAATIN ETSINTÄ JA MUUTTO
-
-    i = 1
-    value = arr[0]
-    while i < len(arr):
-        if arr[i] == value:
-            print("Duplikaatti löytynyt!")
-            print("indeksi:" + str(i-1) + "ja arvo" + str(arr[i]))
-            arr[i] = arr[i]+1e-3
-        value = arr[i]
-        i += 1
-    return
-
-
 def graph(x, y, style, label, xlabel, ylabel, scale):
     """
     Generates graph with given parameters.
@@ -384,7 +354,39 @@ def EoS_p2r(p, Gamma, Kappa):
     return rho
 
 
-def TOV(r, y, K, G, rho_EoS, xdata=0, ydata=0, choice=True):
+def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
+    """
+    
+
+    Parameters
+    ----------
+    choise : TYPE
+        DESCRIPTION.
+    interpolation : TYPE
+        DESCRIPTION.
+    p : TYPE
+        DESCRIPTION.
+    Gamma : TYPE
+        DESCRIPTION.
+    Kappa : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    rho : TYPE
+        DESCRIPTION.
+
+    """
+
+    if choise == 0:
+        rho = EoS_p2r(p, Gamma, Kappa)
+    elif choise == 1:
+        rho = EoS_CUSTOMDATA_p2rho(interpolation, p)
+
+    return rho
+
+
+def TOV(r, y, K, G, interpolation, rho_func):
     """
     Määritellään TOV-yhtälöt ja palautetaan ne taulukossa.
 
@@ -403,7 +405,9 @@ def TOV(r, y, K, G, rho_EoS, xdata=0, ydata=0, choice=True):
     """
     m = y[0]                            # Asetetaan muuttujat taulukkoon
     p = y[1]
-    rho = rho_EoS(p)
+    # rho = rho_EoS(p)
+    rho = EoS_choiser(rho_func, interpolation, p, G, K)
+    
     # if choice:                      # TODO Erillinen funktio rho:n kutsumiselle?
     #     rho = EoS_p2r(p, G, K)      # WD:n energiatiheys rho_eos[0]
     # else:
@@ -417,12 +421,12 @@ def TOV(r, y, K, G, rho_EoS, xdata=0, ydata=0, choice=True):
     return dy
 
 
-def found_radius(t, y, d1, d2, d3, d4, d5, d6):
+def found_radius(t, y, d1, d2, d3, d4):
     """
     Event function: Zero of pressure
     ODE integration stops when this function returns True
     """
-    d1, d2, d3, d4, d5, d6 = d1, d2, d3, d4, d5, d6
+    d1, d2, d3, d4 = d1, d2, d3, d4
     return y[1].real
 
 
@@ -488,28 +492,31 @@ rspan = np.linspace(rmin, rmax, N)
 r0, rf = rmin, rmax               # Otetaan rspan ääriarvot.
 
 
-def SOLVE_TOV(n, R_body=0, rho_K=0, p_K=0,
-              rho_c=0, p_c=0, a=0, xdata=0, ydata=0, choice=True,
-              interpolate=0):
+def SOLVE_TOV(n, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
+              rho_c=0, p_c=0, a=0, interpolation=0, rho_func=0):
     """
-
+    
 
     Parameters
     ----------
-    R_body : TYPE
-        DESCRIPTION.
     n : TYPE
         DESCRIPTION.
+    R_body : TYPE, optional
+        DESCRIPTION. The default is 0..
     rho_K : TYPE, optional
-        DESCRIPTION. The default is 0.
+        DESCRIPTION. The default is 0..
     p_K : TYPE, optional
-        DESCRIPTION. The default is 0.
+        DESCRIPTION. The default is 0..
     rho_c : TYPE, optional
-        DESCRIPTION. The default is 0.
+        DESCRIPTION. The default is 0..
     p_c : TYPE, optional
-        DESCRIPTION. The default is 0.
+        DESCRIPTION. The default is 0..
     a : TYPE, optional
-        DESCRIPTION. The default is 0.
+        DESCRIPTION. The default is 0..
+    interpolation : TYPE, optional
+        DESCRIPTION. The default is 0..
+    rho_func : TYPE, optional
+        DESCRIPTION. The default is 0..
 
     Returns
     -------
@@ -525,8 +532,9 @@ def SOLVE_TOV(n, R_body=0, rho_K=0, p_K=0,
     """
 
     Gamma = gamma_from_n(n)
-    Kappa = kappa_from_p0rho0(p_K, rho_K, Gamma)
-    # Kappa = 30+0j # kappa_from_r0rho0n(R_body, rho_K, n)
+    Kappa_VAL = [kappa_from_p0rho0(p_K, rho_K, Gamma), 
+                 kappa_from_r0rho0n(R_body, rho_K, n)]
+    Kappa = Kappa_VAL[kappa_choise]
     m, p, rho = set_initial_conditions(r0, Gamma, Kappa, rho_c, p_c, a)
     y0 = m, p
 
@@ -536,7 +544,7 @@ def SOLVE_TOV(n, R_body=0, rho_K=0, p_K=0,
 
     soln = solve_ivp(TOV, (r0, rf), y0, method='BDF',
                      dense_output=True, events=found_radius,
-                     args=(Kappa, Gamma, xdata, ydata, choice, interpolate))
+                     args=(Kappa, Gamma, interpolation, rho_func))
 
     print("Solverin parametreja:")
     print(soln.nfev, 'evaluations required')
@@ -571,7 +579,7 @@ def SOLVE_TOV(n, R_body=0, rho_K=0, p_K=0,
 
 
 # Ratkaistaan TOV valkoisen kääpiön alkuarvoille:
-# SOLVE_TOV(R_WD0, 3, rho_K=1e-10+0j, rho_c=1e-16+0j)
+# SOLVE_TOV(3, R_body=6e6, rho_K=1e-10+0j, rho_c=1e-10+0j, a=0, rho_func=0)
 
 
 # %%
@@ -690,16 +698,17 @@ NS_EoS_ic_Gamma = NS_Eos_ic[3].values
 # paperista otetuilla alkuarvoilla
 
 NS_EoS_oc_r, NS_EoS_oc_m, NS_EoS_oc_P, NS_EoS_oc_RHO = SOLVE_TOV(
-    3,
+    3, 
     R_body=R_NS0,
+    kappa_choise=0, 
     rho_K=2.5955e-13+0j,
-    p_K=5.13527e-16,
-    p_c=5.13527e-16,
-    a=1)
+    p_K=5.13527e-16, a=1, 
+    p_c=5.13527e-16)
 
 # Yhdistetään sisemmän kuoren ja ytimen
 # energiatiheys ja paine. Käännetään taulukot myös
-# alkamaan ytimestä. Paine ja energiatiheyden yksiköt: [p] = [rho] = m**-2
+# alkamaan ytimestä. Muutetaan paine ja energiatiheyden 
+# yksiköt: [p] = [rho] = m**-2
 
 # Energiatiheys
 NS_EoS_ic_core_rho = np.flip(np.append(
@@ -724,13 +733,12 @@ NS_EoS_RHO = np.flip(np.unique(np.delete(
 graph(NS_EoS_P, NS_EoS_RHO, plt.scatter, "NS EoS, (P, rho)",
       "Paine, P", "Energiatiheys, rho", 'log')
 
-
 # Määritetään interpoloitu funktio NS:n (p, rho)-datalle.
-NS_EoS_interpolate = interp1d(NS_EoS_P, NS_EoS_RHO, kind='cubic', bounds_error=False)
+NS_EoS_interpolate = interp1d(NS_EoS_P, NS_EoS_RHO, kind='cubic', bounds_error=True)
 
 # Määritetään x-akselin paineen arvoille uusi tiheys
 NS_EoS_P_new = np.logspace(np.log10(NS_EoS_P[0]),
-                           np.log10(NS_EoS_P[-1]), 1000)
+                            np.log10(NS_EoS_P[-1]), 1000)
 
 # Piirretään interpoloidut datapisteet.
 graph(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new), plt.plot,
@@ -740,16 +748,27 @@ graph(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new), plt.plot,
 # print("Neutronitähden energiatiheys ja paine ytimestä: \n")
 # print(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new))
 
-# Ratkaistaan Neutronitähden tilanyhtälö ja mallinnetaan sen rakenne.
 NS_r, NS_m, NS_p, NS_rho = SOLVE_TOV(
-    3,
-    rho_K=NS_EoS_interpolate(NS_EoS_P_new[-2])+0j,
-    p_K=NS_EoS_P_new[-1],
+    3, R_body=R_NS0, kappa_choise=0,
+    rho_K=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
+    p_K=NS_EoS_P_new[2],
     rho_c=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
-    p_c=NS_EoS_P_new[1],
-    xdata=NS_EoS_P,
-    ydata=NS_EoS_RHO,
+    p_c=NS_EoS_P_new[2],
     a=2,
-    choice=False)
+    interpolation=NS_EoS_interpolate,
+    rho_func=1)
+    
+
+# Ratkaistaan Neutronitähden tilanyhtälö ja mallinnetaan sen rakenne.
+# NS_r, NS_m, NS_p, NS_rho = SOLVE_TOV(
+#     3,
+#     rho_K=NS_EoS_interpolate(NS_EoS_P_new[-2])+0j,
+#     p_K=NS_EoS_P_new[-1],
+#     rho_c=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
+#     p_c=NS_EoS_P_new[1],
+#     xdata=NS_EoS_P,
+#     ydata=NS_EoS_RHO,
+#     a=2,
+#     choice=False)
 
 
