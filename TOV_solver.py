@@ -2,138 +2,13 @@
 """
 Created on Mon Jun  6 09:42:03 2022
 
-@author: anter
+@author: Antero
 """
 from scipy.integrate import solve_ivp
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.interpolate import interp1d
-
-"""
-
-Tämän ohjelma ratkaisee yhdistetyn epälineaarisen
-differentiaaliryhmän. Yhtälöt ovat ns. TOV-yhtälöt, jotka kuvaavat yhdessä
-tähden rakenteen.
-
-Ohjelmalla voi määrittää jollekkin tähtityypille massa-säde - relaation
-mallintamalla useaa tähteä annetuilla parametreilla sekä joillakin
-tilanyhtälöillä ja varioimalla esim. tähden keskipisteen energiatiheyttä.
-//
-This program solves the combined nonlinear DE-equation group. 
-The equations are the so-called TOV equations that describe together
-star structure.
-
-The program can be used to define a mass-radius relation for a star type
-by modeling several stars with the given parameters as well as some
-with equations of state and by varying, for example, the energy density of
-the center of the star.
-
-Notaatio // Notation:
-    WD = White Dwarf, NS = Neutron Star
-
-Valitaan geometrisoidut yksiköt // Choose geometrized units:
-    G = c = 1
-
-Yhtälöt // Equations:
-
-    dmdr = 4*np.pi*rho*r**2
-    dpdr = -(rho+p)*(m + 4*np.pi*r**3*p)/(r*(r-2*m))   # Relativistinen
-    dpdr = -(m*rho)/(r**2)                             # Ei-Relativistinen
-
-Näiden lisäksi tarvitaan tilanyhtälö. Valkoiselle kääpiölle valitaan
-paineen ja energiatiheyden relatoiva polytrooppimalli 
-//
-In addition to these, an equation of state is needed. A white dwarf is chosen
-polytropic model relating pressure and energy density:
-
-    p = Kappa*rho**Gamma
-
-Neutronitähdelle valitaan sopiva(t) malli(t) paperista
-"A unified equation of state of dense matter and neutron star
-structure".
-//
-Suitable model(s) are selected from the paper for the neutron star
-"A unified equation of state of dense matter and Neutron star
-structure".:
-
-    Taulukot // tables 3. ja 5.
-
-Ohjelmalla voi lakea avaruuden kaarevuusskalaarin (R) - Riccin skalaari -
-ja piirtää tästä kuvaajan.
-//
-The program can be used to calculate the curvature scalar (R) of space 
-- Ricci's scalar - and draw a graph of this.:
-
-    R = -8*np.pi*G*(rho - 3*p)
-
-"""
-
-# %%
-"""
-
-Esimerkkejä koodin ajamisesta konsolissa
-//
-Examples of running code in the console:
-    TODO WD - rakenne
-    TODO WD Massa-säde - relaatio
-    TODO WD avaruuden kaarevuus
-    TODO NS - rakenne
-    TODO NS avaruuden kaarevuus
-    TODO kivieksoplaneetta
-
-Parametrien arvojen kokoluokka
-//
-Size range of parameter values:
-
-Valkoinen kääpiö // White dwarf (geom. units):
-    R0 = ~R_earth = 6e6
-    Kappa = ~ 0.2-20
-    rho_c = ~1e-10
-
-Neutronitähti // Neutron star (geom. units):
-    R0 = ~10km = 10000m
-    Kappa = ~20-1000
-
-REL (TOV):
-    n = 3
-    Gamma = 4/3
-
-NOT-REL (NEWT.):
-    n = 1.5
-    Gamma = 5/3
-
-Määrätään vakioita ja integrointirajat.
-//
-Determine constants and limits of integration
-
-"""
-
-# VAKIOITA // CONSTANTS
-M_sun = 2e30              # kg
-R_WD0 = 6e6               # m
-R_NS0 = 10000             # m
-
-# Geometrisoidut yksiköt (Luonnollisia yksiköitä) 
-# // 
-# Geometrizied units (Natural units)
-c = 1
-G = 1
-
-# Asetetaan integrointiparametrit.
-# Integraattori adaptiivinen, lopettaa integroinnin tähden rajalla.
-# //
-# Let's set the integration parameters.
-# Integrator adaptive, stops the integration at the star boundary.
-
-rmin, rmax = 0.1, np.inf
-N = 500
-rspan = np.linspace(rmin, rmax, N)
-
-# Initiaalirajat säteelle. // Initial limits for the radius.
-r0, rf = rmin, rmax
-
-# %%
 """
 
 Yleisiä funktioita hyötykäyttöön. // General functions for utility use.
@@ -418,19 +293,15 @@ def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
     return m, p, rho
 
 
-# %%
-"""
 
-Määritetään Tolman-Oppenheimer-Volkoff - yhtälöt (m, p, EoS), 
-jotka ratkaisemalla saadaan kuvattua tähden rakenne.
-//
-Determine the Tolman-Oppenheimer-Volkoff equations (m, p, EoS),
-by solving which the structure of the star can be described.
-
-"""
+# Määritetään Tolman-Oppenheimer-Volkoff - yhtälöt (m, p, EoS), 
+# jotka ratkaisemalla saadaan kuvattua tähden rakenne.
+# //
+# Determine the Tolman-Oppenheimer-Volkoff equations (m, p, EoS),
+# by solving which the structure of the star can be described.
 
 
-def EoS_CUSTOM_DATA_p2rho(interpolation, p_point):
+def EoS_cd_p2rho(interpolation, p_point):
     """
     Equation of state from custom interpolated (P, RHO)-data.
 
@@ -500,7 +371,6 @@ def EoS_p2r(p, Gamma, Kappa):
     return rho
 
 
-
 def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
     """
     Chooses wanted EoS for DE-group as rho and returns it
@@ -525,7 +395,7 @@ def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
     if choise == 0:
         rho = EoS_p2r(p, Gamma, Kappa)
     elif choise == 1:
-        rho = EoS_CUSTOM_DATA_p2rho(interpolation, p)
+        rho = EoS_cd_p2rho(interpolation, p)
 
     return rho
 
@@ -592,424 +462,472 @@ def found_radius(t, y, d1, d2, d3, d4):
     return y[1].real
 
 
-found_radius.terminal = True
-found_radius.direction = -1
-
-# %%
-"""
-
-Määritellään funktio TOV-yhtälöiden ratkaisemiseksi ja koodin ajon
-helpottamiseksi. Funktiolle annetaan kasa parametreja ja se ratkaisee
-aijemmin määritellyt yhtälöt.
-//
-Let's define a function to solve the TOV equations and to help run the code
-easier. The function is given a bunch of parameters and it solves
-previously defined equations.
-
-"""
-
-def SOLVE_TOV(n, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
-              rho_c=0, p_c=0, a=0, rho_func=0, interpolation=0, body=""):
-    """
-    Appropriate initial values ​​and equations are chosen. Solves TOV equations
-    in this case for the corresponding astrophysical body. As a solution
-    the mass, pressure, energy density and radius of an astrophysical body 
-    are obtained.
+def main(model):
     
-    Solver works in geometrizied units so be sure to input values
-    in those units! Function returns solutions in geometrizied units also.
-
-    Parameters
-    ----------
-    n : Float
-        Polytrope index.
-    R_body : Float, optional
-        Approximate the radius of the astrophysical body
-        to be modeled . The default is 0..
-    kappa_choise : Int, optional
-        Choise for which way Kappa is computed:
-            0=kappa_from_p0rho0 (needs corresponding p and rho)
-            1=kappa_from_r0rho0n (needs approximate radius and CENTRAL rho)
-    rho_K : Float, optional
-        Energy density for which we want calculate 
-        the corresponding constant of proportionality. The default is 0..
-    p_K : Float, optional
-        Pressure for which we want calculate 
-        the corresponding constant of proportionality.
-        ONLY NEEDED WHEN kappa_choise=0. Has to be corresponding 
-        to rho_K. The default is 0..
-    rho_c : Float, optional
-        Central energy density. Used to compute initial values.
-        The default is 0..
-    p_c : Float, optional
-        Central pressure. Used to compute initial values. The default is 0..
-    a : Int, optional
-        Choice for given initial value. Another is then 0 and
-        calculated from EoS. Can take both also.
-        Choice:
-            a = 0 is for given rho0.
-            a = 1 is for given p0.
-            a = 2 is for given rho0 and p0.
-        The default is 0..
-    rho_func : Int, optional
-        Choise for what EoS is used to compute energy density.
-        Choise:
-            0=Polytrope EoS.
-            1=Interpolated EoS from data.
-        The default is 0..
-    interpolation : interpolate, optional
-        Has to be given if choise rho_func=1. Otherwise can be ignored.
-        The default is 0..
-    body : String
-        Changes title for graphs. Input depending what is modeled.
-
-    Returns
-    -------
-    r : Array
-        Radius solution for modeled body.
-    m : Array
-        Mass solution for modeled body.
-    p : Array
-        Pressure solution for modeled body.
-    rho : Array
-        Energy density solution for modeled body.
-
-    """
-    # Asetetaan alkuarvot // Set initial values
-    Gamma = gamma_from_n(n)
-    Kappa_VAL = [kappa_from_p0rho0(p_K, rho_K, Gamma), 
-                 kappa_from_r0rho0n(R_body, rho_K, n)]
-    Kappa = Kappa_VAL[kappa_choise]
-    m, p, rho = set_initial_conditions(r0, Gamma, Kappa, rho_c, p_c, a)
-    y0 = m, p
+    model_choise = ["RP", "NS_polytrope", "WD_NREL", 
+                    "WD_REL", "MSS_RADZONE", "SS", "GC"]
     
-    print("Tulostetaan alkuarvot. \n Kappa ja Gamma:" + str(Kappa) +
-          " ja " + str(Gamma) + "\n Asetetut alkuarvot (m, p ja rho):"
-          + str(y0) + "\n \n")
+    model_params = [[3, 10000, 0, 2.5955e-13+0j, 5.13527e-16, 1, 5.13527e-16,
+    "Valkoisen kääpiön (NS:n ulomman kuoren) \n"], 
+                    [], 
+                    []]
     
-    # Ratkaistaan TOV annetuilla parametreilla 
+    for i, m in enumerate(model_choise):
+        if m == model_choise[i]:
+            n               =model_params[i][0]
+            R_body          =model_params[i][1] 
+            kappa_choise    =model_params[i][2]
+            rho_K           =model_params[i][3]
+            p_K             =model_params[i][4]
+            rho_c           =model_params[i][5]
+            p_c             =model_params[i][6]
+            a               =model_params[i][7]
+            rho_func        =model_params[i][8]
+            interpolation   =model_params[i][9]
+            body            =model_params[i][10]
+        elif model == "NS_acc":
+            NS_MODEL()
+    
+    print("Model of your choise and semi-realistic params for it: \n")
+    print("Model = "        + model)
+    print("n = "            + n)
+    print("R_body = "       + R_body)
+    print("kappa_choise = " + kappa_choise)
+    print("rho_K = "        + rho_K)
+    print("p_K = "          + p_K)
+    print("rho_c = "        + rho_c)
+    print("p_c = "          + p_c)
+    print("a = "            + a)
+    print("rho_func = "     + rho_func)
+    print("interpolate = "  + interpolation)
+    print("body = "         + body)
+    
+    # Määrätään vakioita.
+    # //
+    # Determine constants.
+    M_sun = 2e30              # kg
+    R_WD0 = 6e6               # m
+    R_NS0 = 10000             # m
+    
+    # Geometrisoidut yksiköt (Luonnollisia yksiköitä) 
     # // 
-    # Let's solve the TOV with the given parameters
-    soln = solve_ivp(TOV, (r0, rf), y0, method='BDF',
-                     dense_output=True, events=found_radius,
-                     args=(Kappa, Gamma, interpolation, rho_func))
-
-    print("Solverin parametreja:")
-    print(soln.nfev, 'evaluations required')
-    print(soln.t_events)
-    print(soln.y_events)
-    print("\n \n")
-
-    # TOV ratkaisut // TOV solutions
-    # Ratkaisut yksiköissä // Solutions in units:
-    # [m] = kg, [p] = m**-2 ja [rho] = m**-2
-    r = soln.t
-    m = soln.y[0].real
-    p = soln.y[1].real
-    rho = EoS_p2r(p, Gamma, Kappa)
-
-    print("Saadut TOV ratkaisut: \n")
-    print("Säde: \n" + str(r.real) + "\n Massa: \n" + str(m.real) +
-          "\n Paine: \n" + str(p.real) + "\n Energiatiheys: \n" + str(rho.real))
-    print("\n \n")
-
-    # Piirretään ratkaisun malli kuvaajiin yksiköissä:
-    # //
-    # Let's plot the model of the solution on graphs in units:
-    # [m] = kg, [p] = erg/cm**m ja [rho] = g/cm**3 
-    graph(r, unit_conversion(0, "M", m, 1),
-          plt.plot, "massa", "säde, r (m)", "massa, m (kg)", 'linear',
-          body + " " + "massa säteen funktiona")
-    graph(r, unit_conversion(2, "P", p, -1),
-          plt.plot, "paine", "säde, r (m)", "p (erg/cm^3)", 'linear', 
-          body + " " + "paine säteen funktiona")
-    graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
-          fr'$\rho_c$ = {rho_c.real}' '\n'
-          fr'$K$ = {Kappa.real}' '\n' 
-          fr'$\Gamma$ = {Gamma}',
-          "säde, r", "energiatiheys, rho (g/cm^3)", 'linear',
-          body + " " + "energiatiheys säteen funktiona")
-    return r.real, m.real, p.real, rho.real
-
-
-# Ratkaistaan TOV valkoisen kääpiön alkuarvoille:
-# SOLVE_TOV(3, R_body=6e6, rho_K=1e-10+0j, rho_c=1e-10+0j, a=0, rho_func=0)
-
-
-# %%
-"""
-
-Ratkaistaan massa-säde relaatio. Etsitään TOV-yhtälöiden ratkaisuja
-jollakin rhospan-alueella. Ratkaistaan yhtälöitä siis tähden keskipisteen eri
-energiatiheyksien arvoilla.
-
-Etsitään tähden raja (find_radius) paineen ratkaisusta ja sitä vastaava
-massa massan kuvaajasta. Tallennetaan nämä arvot taulukkoon ja piirretään
-kuvaaja.
-
-Mallinnetaan nyt useaa tähteä ja piirretään
-Massa-Säde - relaatio.
-//
-Let's solve the mass-radius relation. We are looking for solutions to the
-TOV equations in some rhospan area. So let's solve the equations
-from the center of the star with varying values ​​of energy densities.
-
-Let's find the limit of the star (find_radius) from the pressure solution 
-and its equivalent mass from the mass solution. Let's save these values ​​in
-an array and plot them.
-
-Now let's model several stars and plot them
-Mass-Radius - relation.
-
-"""
-
-# TODO korjaa
-
-
-def MR_relaatio(rho_min, rho_max):
-    """
-    Solves mass-radius - relation.
-
-    Parameters
-    ----------
-    rho_min : Float
-        Lower limit of central energy densities.
-    rho_max : Float
-        Higher limit of central energy densities.
-
-    Returns
-    -------
-    R : Array
-        Radiuses of star sequense.
-    M : Array
-        Masses of star sequense.
-
-    """
-
-    # Build 200 star models
-    rhospan = np.linspace(rho_min, rho_max, 100)
-    R = []
-    M = []
-    # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
-    # //
-    # Solve the TOV for each rho0 in the range of rhospan.
-    for rho0 in rhospan:
-        r, m, p, rho = SOLVE_TOV(R_WD0, 3, rho_cK=1e-11+0j, rho_c=rho0)
-        r_boundary = find_radius(p, r, raja=0)
-        m_boundary = find_mass_in_radius(m, r, r_boundary)
-        R.append(r_boundary)
-        M.append(m_boundary)
-    # Printtaa ja plottaa massa-säde - relaation. 
-    # //
-    # Print and plot the mass-radius relation.
-    print("Tulostetaan ratkaistut massat ja niitä vastaavat säteet: \n")
-    print("Säteet: \n " + str(R) + "\n Massat: \n" + str(M))
-    graph(R, M, plt.scatter, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde")
-    graph(R, M, plt.plot, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde")
-    return R, M
-
-
-# MR_relaatio(1e-16+0j, 1e-8+0j)
-
-
-# %%
-"""
-
-Määritellään Riccin skalaari ja ratkaistaan se
-annetuilla parametreilla.
-//
-Let's define the Ricci scalar and solve it
-with the given parameters.
-
-"""
-
-
-def Ricci_scalar(p, rho, r):
-    """
-    Computes the curvature scalar of space - the Ricci scalar
-    and plots it.
-
-    Parameters
-    ----------
-    p : Array
-        Pressure solution.
-    rho : Array
-        Energy density solution.
-
-    Returns
-    -------
-    None.
-
-    """
-    R_scalar = -8*np.pi*(rho - 3*p)
-    graph(r, R_scalar, plt.plot,
-          "Avaruuden kaarevuus", "Säde, r", "Riccin skalaari, R", 
-          'linear', "Avaruuden kaarevuusskalaari")
-
-
-# %%
-"""
-
-Rakennetaan neutronitähden malli paperista "A unified equation
-of state of dense matter and neutron star structure" saadulla datalla
-sisemmän kuoren tilanyhtälöstä ja ytimen tilanyhtälöstä.
-//
-Let's build a neutron star model from the paper "A unified equation
-of state of dense matter and Neutron star structure" with the obtained data
-from the equation of state of the inner shell and the equation of state of 
-the core
-
-Tilanyhtälöt:
-    Ulompi kuori  -> Polytrooppi tilanyhtälö Gamma = 4/3
-    Sisempi kuori -> Data paperin taulukosta 3.
-    Ydin          -> Data paperin taulukosta 5.
-
-Equation of states:
-    Outer crust     -> Polytrope with Gamma = 4/3
-    Inner crust     -> Data from paper array 3.
-    Core            -> Data from paper array 5.
-
-Tilanyhtälöiden muuttujat datasta // Variables of state equations from data:
-    n_b, rho, P, Gamma.
-
-"""
-
-def NS_MODEL():
-    """
-    A semi-accurate model of a neutron star.
-
-    Returns
-    -------
-    NS_r : Array
-        Solution for radius.
-    NS_m : Array
-        Solution for mass.
-    NS_p : Array
-        Solution for pressure.
-    NS_rho : Array
-        Solution for energy density.
-
-    """
-    # Neutronitähden ytimen tilanyhtälön ratkaistuja parametreja.
-    # //
-    # Solved parameters of the neutron star core equation of state
-    NS_Eos_core = pd.read_csv(
-        'NT_EOS_core.txt', sep=";", header=None)
+    # Geometrizied units (Natural units)
+    c = 1
+    G = 1
     
-    NS_EoS_core_n_b = NS_Eos_core[0].values
-    NS_EoS_core_rho = NS_Eos_core[1].values
-    NS_EoS_core_P = NS_Eos_core[2].values
-    NS_EoS_core_Gamma = NS_Eos_core[3].values
-    
-    # Neutronitähden sisemmän kuoren tilanyhtälön ratkaistuja parametreja.
+    # Asetetaan integrointiparametrit.
+    # Integraattori adaptiivinen, lopettaa integroinnin tähden rajalla.
     # //
-    # The solved parameters of the neutron star's inner crust equation of state.
-    NS_Eos_ic = pd.read_csv(
-        'NT_EOS_inner_crust.txt', sep=";", header=None)
+    # Let's set the integration parameters.
+    # Integrator adaptive, stops the integration at the star boundary.
+    rmin, rmax = 0.1, np.inf
+    N = 500
+    rspan = np.linspace(rmin, rmax, N)
     
-    NS_EoS_ic_n_b = NS_Eos_ic[0].values
-    NS_EoS_ic_rho = NS_Eos_ic[1].values
-    NS_EoS_ic_P = NS_Eos_ic[2].values
-    NS_EoS_ic_Gamma = NS_Eos_ic[3].values
+    # Initiaalirajat säteelle. // Initial limits for the radius.
+    r0, rf = rmin, rmax
     
-    # Neutronitähden ulomman kuoren ratkaistu tilanyhtälö
-    # paperista otetuilla alkuarvoilla
+    
+    # Ode-ratkaisijan lopettaminen ehdon täyttyessä.
     # //
-    # The solved equation of state for the outer crust of a neutron star
-    # with initial values ​​taken from the paper
-    NS_EoS_oc_r, NS_EoS_oc_m, NS_EoS_oc_P, NS_EoS_oc_RHO = SOLVE_TOV(
-        3, 
-        R_body=R_NS0,
-        kappa_choise=0, 
-        rho_K=2.5955e-13+0j,
-        p_K=5.13527e-16, a=1, 
-        p_c=5.13527e-16,
-        body="Valkoisen kääpiön (NS:n ulomman kuoren) \n")
+    # Termination of ode solver when met with condition.
+    found_radius.terminal = True
+    found_radius.direction = -1
     
-    # Yhdistetään sisemmän kuoren ja ytimen energiatiheys ja paine. 
-    # Käännetään taulukot myös alkamaan ytimestä. 
-    # Muutetaan paine ja energiatiheyden yksiköt:
+    # Määritellään funktio TOV-yhtälöiden ratkaisemiseksi ja koodin ajon
+    # helpottamiseksi. Funktiolle annetaan kasa parametreja ja se ratkaisee
+    # aijemmin määritellyt yhtälöt.
     # //
-    # Connect the inner shell and core energy density and pressure. 
-    # Let's turn the tables too to start from the core. 
-    # Let's change the pressure and energy density units:
-        # [p] = [rho] = m**-2
+    # Let's define a function to solve the TOV equations and to help run the code
+    # easier. The function is given a bunch of parameters and it solves
+    # previously defined equations.
+    def SOLVE_TOV(n, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
+                  rho_c=0, p_c=0, a=0, rho_func=0, interpolation=0, body=""):
+        """
+        Appropriate initial values ​​and equations are chosen. Solves TOV equations
+        in this case for the corresponding astrophysical body. As a solution
+        the mass, pressure, energy density and radius of an astrophysical body 
+        are obtained.
+        
+        Solver works in geometrizied units so be sure to input values
+        in those units! Function returns solutions in geometrizied units also.
     
-    # Energiatiheys // Energy density
-    NS_EoS_ic_core_rho = unit_conversion(2, "RHO", np.flip(np.append(
-            NS_EoS_ic_rho, NS_EoS_core_rho), -1), 1)
-    # Paine // Pressure
-    NS_EoS_ic_core_P = unit_conversion(2, "P", np.flip(np.append(
-            NS_EoS_ic_P, NS_EoS_core_P), -1), 1)
+        Parameters
+        ----------
+        n : Float
+            Polytrope index.
+        R_body : Float, optional
+            Approximate the radius of the astrophysical body
+            to be modeled . The default is 0..
+        kappa_choise : Int, optional
+            Choise for which way Kappa is computed:
+                0=kappa_from_p0rho0 (needs corresponding p and rho)
+                1=kappa_from_r0rho0n (needs approximate radius and CENTRAL rho)
+        rho_K : Float, optional
+            Energy density for which we want calculate 
+            the corresponding constant of proportionality. The default is 0..
+        p_K : Float, optional
+            Pressure for which we want calculate 
+            the corresponding constant of proportionality.
+            ONLY NEEDED WHEN kappa_choise=0. Has to be corresponding 
+            to rho_K. The default is 0..
+        rho_c : Float, optional
+            Central energy density. Used to compute initial values.
+            The default is 0..
+        p_c : Float, optional
+            Central pressure. Used to compute initial values. The default is 0..
+        a : Int, optional
+            Choice for given initial value. Another is then 0 and
+            calculated from EoS. Can take both also.
+            Choice:
+                a = 0 is for given rho0.
+                a = 1 is for given p0.
+                a = 2 is for given rho0 and p0.
+            The default is 0..
+        rho_func : Int, optional
+            Choise for what EoS is used to compute energy density.
+            Choise:
+                0=Polytrope EoS.
+                1=Interpolated EoS from data.
+            The default is 0..
+        interpolation : interpolate, optional
+            Has to be given if choise rho_func=1. Otherwise can be ignored.
+            The default is 0..
+        body : String
+            Changes title for graphs. Input depending what is modeled.
     
-    # Plotataan paine ja energiatiheys kuvaaja (rho, P) tutkimuspaperista.
-    # //
-    # Let's plot the pressure and energy density (rho, P) from the research paper
-    graph(NS_EoS_ic_core_P, NS_EoS_ic_core_rho, plt.scatter,
-          "NS EoS, (P, rho) - ic-core",
-          "Paine, P (m^-2)", "Energiatiheys, rho (m^-2)", 'log',
-          "NS:n energiatiheys paineen ftiona ic-core")
+        Returns
+        -------
+        r : Array
+            Radius solution for modeled body.
+        m : Array
+            Mass solution for modeled body.
+        p : Array
+            Pressure solution for modeled body.
+        rho : Array
+            Energy density solution for modeled body.
     
-    # Yhdistetään paperin data ja ratkaistu ulomman kuoren malli.
-    # //
-    # The paper data and the solved model of the outer shell are combined.
-    NS_EoS_P = np.flip(np.unique(np.delete(
-        np.append(NS_EoS_ic_core_P.real, NS_EoS_oc_P.real), -1)), -1)
-    NS_EoS_RHO = np.flip(np.unique(np.delete(
-        np.append(NS_EoS_ic_core_rho.real, NS_EoS_oc_RHO.real), -1)), -1)
+        """
+        # Asetetaan alkuarvot // Set initial values
+        Gamma = gamma_from_n(n)
+        Kappa_VAL = [kappa_from_p0rho0(p_K, rho_K, Gamma), 
+                     kappa_from_r0rho0n(R_body, rho_K, n)]
+        Kappa = Kappa_VAL[kappa_choise]
+        m, p, rho = set_initial_conditions(r0, Gamma, Kappa, rho_c, p_c, a)
+        y0 = m, p
+        
+        print("Tulostetaan alkuarvot. \n Kappa ja Gamma:" + str(Kappa) +
+              " ja " + str(Gamma) + "\n Asetetut alkuarvot (m, p ja rho):"
+              + str(y0) + "\n \n")
+        
+        # Ratkaistaan TOV annetuilla parametreilla 
+        # // 
+        # Let's solve the TOV with the given parameters
+        soln = solve_ivp(TOV, (r0, rf), y0, method='BDF',
+                         dense_output=True, events=found_radius,
+                         args=(Kappa, Gamma, interpolation, rho_func))
     
-    # Plot
-    graph(NS_EoS_P, NS_EoS_RHO, plt.scatter, "NS EoS, (P, rho)",
-          "Paine, P (m^-2)", "Energiatiheys, rho (m^-2)", 'log',
-          "NS:n Energiatiheys paineen ftiona")
+        print("Solverin parametreja:")
+        print(soln.nfev, 'evaluations required')
+        print(soln.t_events)
+        print(soln.y_events)
+        print("\n \n")
     
-    # Määritetään interpoloitu funktio NS:n (p, rho)-datalle.
-    # //
-    # Let's define an interpolated function for NS (p, rho) data.
-    NS_EoS_interpolate = interp1d(NS_EoS_P, NS_EoS_RHO,kind='cubic',
-                                  bounds_error=False,
-                                  fill_value=(NS_EoS_RHO[-1], NS_EoS_RHO[0]))
+        # TOV ratkaisut // TOV solutions
+        # Ratkaisut yksiköissä // Solutions in units:
+        # [m] = kg, [p] = m**-2 ja [rho] = m**-2
+        r = soln.t
+        m = soln.y[0].real
+        p = soln.y[1].real
+        rho = EoS_p2r(p, Gamma, Kappa)
     
-    # Määritetään x-akselin paineen arvoille uusi tiheys.
-    # //
-    # Let's define a new density for the x-axis pressure values
-    NS_EoS_P_new = np.logspace(np.log10(NS_EoS_P[0]), np.log10(NS_EoS_P[-1]), 1000)
+        print("Saadut TOV ratkaisut: \n")
+        print("Säde: \n" + str(r.real) + "\n Massa: \n" + str(m.real) +
+              "\n Paine: \n" + str(p.real) + "\n Energiatiheys: \n" + str(rho.real))
+        print("\n \n")
     
-    # Piirretään interpoloidut datapisteet.
-    # //
-    # Let's plot the interpolated data points
-    graph(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new), plt.plot,
-          "NS EoS, (rho, P) interpolate", "Paine, P (m^-2)", 
-          "Energiatiheys, rho (m^-2)", 'log', "NS:n interpoloitu energiatiheys paineen ftiona")
+        # Piirretään ratkaisun malli kuvaajiin yksiköissä:
+        # //
+        # Let's plot the model of the solution on graphs in units:
+        # [m] = kg, [p] = erg/cm**m ja [rho] = g/cm**3 
+        graph(r, unit_conversion(0, "M", m, 1),
+              plt.plot, "massa", "säde, r (m)", "massa, m (kg)", 'linear',
+              body + " " + "massa säteen funktiona")
+        graph(r, unit_conversion(2, "P", p, -1),
+              plt.plot, "paine", "säde, r (m)", "p (erg/cm^3)", 'linear', 
+              body + " " + "paine säteen funktiona")
+        graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
+              fr'$\rho_c$ = {rho_c.real}' '\n'
+              fr'$K$ = {Kappa.real}' '\n' 
+              fr'$\Gamma$ = {Gamma}',
+              "säde, r", "energiatiheys, rho (g/cm^3)", 'linear',
+              body + " " + "energiatiheys säteen funktiona")
+        return r.real, m.real, p.real, rho.real
     
-    # Ratkaistaan nyt TOV uudestaan NS:n datalle ja mallinnetaan koko
-    # tähden rakenne säteen funktiona.
-    # //
-    # Let's now solve the TOV again for NS data and model the whole
-    # star structure as a function of radius.
-    NS_r, NS_m, NS_p, NS_rho = SOLVE_TOV(
-        3, R_body=R_NS0, kappa_choise=0,
-        rho_K=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
-        p_K=NS_EoS_P_new[2],
-        rho_c=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
-        p_c=NS_EoS_P_new[2],
-        a=2,
-        interpolation=NS_EoS_interpolate,
-        rho_func=1,
-        body="Neutronitähden")
-    return NS_r, NS_m, NS_p, NS_rho
+    
+    # Ratkaistaan TOV valkoisen kääpiön alkuarvoille:
+    # SOLVE_TOV(3, R_body=6e6, rho_K=1e-10+0j, rho_c=1e-10+0j, a=0, rho_func=0)
+    
+    
+    
 
-
-NS_r, NS_m, NS_p, NS_rho = NS_MODEL()
-
-# Vielä avaruuden kaarevuus luonnollisissa yksiköissä
-# neutronitähden sisällä.
-# //
-# Also the curvature of space in natural units
-# inside a neutron star.
-Ricci_scalar(unit_conversion(
-    1, "P", unit_conversion(0, "P", NS_p, 1), -1), 
-    unit_conversion(
-        1, "RHO", unit_conversion(0, "RHO", NS_rho, 1), -1), NS_r)
+    
+    # Ratkaistaan massa-säde relaatio. Etsitään TOV-yhtälöiden ratkaisuja
+    # jollakin rhospan-alueella. Ratkaistaan yhtälöitä siis tähden keskipisteen eri
+    # energiatiheyksien arvoilla.
+    
+    # Etsitään tähden raja (find_radius) paineen ratkaisusta ja sitä vastaava
+    # massa massan kuvaajasta. Tallennetaan nämä arvot taulukkoon ja piirretään
+    # kuvaaja.
+    
+    # Mallinnetaan nyt useaa tähteä ja piirretään
+    # Massa-Säde - relaatio.
+    # //
+    # Let's solve the mass-radius relation. We are looking for solutions to the
+    # TOV equations in some rhospan area. So let's solve the equations
+    # from the center of the star with varying values ​​of energy densities.
+    
+    # Let's find the limit of the star (find_radius) from the pressure solution 
+    # and its equivalent mass from the mass solution. Let's save these values ​​in
+    # an array and plot them.
+    
+    # Now let's model several stars and plot them
+    # Mass-Radius - relation.
+    
+    # TODO korjaa
+    def MR_relaatio(rho_min, rho_max):
+        """
+        Solves mass-radius - relation.
+    
+        Parameters
+        ----------
+        rho_min : Float
+            Lower limit of central energy densities.
+        rho_max : Float
+            Higher limit of central energy densities.
+    
+        Returns
+        -------
+        R : Array
+            Radiuses of star sequense.
+        M : Array
+            Masses of star sequense.
+    
+        """
+    
+        # Build 200 star models
+        rhospan = np.linspace(rho_min, rho_max, 100)
+        R = []
+        M = []
+        # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
+        # //
+        # Solve the TOV for each rho0 in the range of rhospan.
+        for rho0 in rhospan:
+            r, m, p, rho = SOLVE_TOV(R_WD0, 3, rho_cK=1e-11+0j, rho_c=rho0)
+            r_boundary = find_radius(p, r, raja=0)
+            m_boundary = find_mass_in_radius(m, r, r_boundary)
+            R.append(r_boundary)
+            M.append(m_boundary)
+        # Printtaa ja plottaa massa-säde - relaation. 
+        # //
+        # Print and plot the mass-radius relation.
+        print("Tulostetaan ratkaistut massat ja niitä vastaavat säteet: \n")
+        print("Säteet: \n " + str(R) + "\n Massat: \n" + str(M))
+        graph(R, M, plt.scatter, "Massa-säde - relaatio", "Säde",
+              "Massa", 'linear', "Massa-säde")
+        graph(R, M, plt.plot, "Massa-säde - relaatio", "Säde",
+              "Massa", 'linear', "Massa-säde")
+        return R, M
+    
+    
+    # MR_relaatio(1e-16+0j, 1e-8+0j)
+    
+    
+    
+    
+    
+    # Määritellään Riccin skalaari ja ratkaistaan se
+    # annetuilla parametreilla.
+    # //
+    # Let's define the Ricci scalar and solve it
+    # with the given parameters.
+    def Ricci_scalar(p, rho, r):
+        """
+        Computes the curvature scalar of space - the Ricci scalar
+        and plots it.
+    
+        Parameters
+        ----------
+        p : Array
+            Pressure solution.
+        rho : Array
+            Energy density solution.
+    
+        Returns
+        -------
+        None.
+    
+        """
+        R_scalar = -8*np.pi*(rho - 3*p)
+        graph(r, R_scalar, plt.plot,
+              "Avaruuden kaarevuus", "Säde, r", "Riccin skalaari, R", 
+              'linear', "Avaruuden kaarevuusskalaari")
+    
+    
+    
+    
+    # Rakennetaan neutronitähden malli paperista "A unified equation
+    # of state of dense matter and neutron star structure" saadulla datalla
+    # sisemmän kuoren tilanyhtälöstä ja ytimen tilanyhtälöstä.
+    # Tilanyhtälöt:
+    #     Ulompi kuori  -> Polytrooppi tilanyhtälö Gamma = 4/3
+    #     Sisempi kuori -> Data paperin taulukosta 3.
+    #     Ydin          -> Data paperin taulukosta 5.
+    # //
+    # Let's build a neutron star model from the paper "A unified equation
+    # of state of dense matter and Neutron star structure" with the obtained data
+    # from the equation of state of the inner shell and the equation of state of 
+    # the core
+    # Equation of states:
+    #     Outer crust     -> Polytrope with Gamma = 4/3
+    #     Inner crust     -> Data from paper array 3.
+    #     Core            -> Data from paper array 5.
+    
+    # Tilanyhtälöiden muuttujat datasta // Variables of state equations from data:
+    #     n_b, rho, P, Gamma.
+    def NS_MODEL():
+        """
+        A semi-accurate model of a neutron star.
+    
+        Returns
+        -------
+        NS_r : Array
+            Solution for radius.
+        NS_m : Array
+            Solution for mass.
+        NS_p : Array
+            Solution for pressure.
+        NS_rho : Array
+            Solution for energy density.
+    
+        """
+        # Neutronitähden ytimen tilanyhtälön ratkaistuja parametreja.
+        # //
+        # Solved parameters of the neutron star core equation of state
+        NS_Eos_core = pd.read_csv(
+            'NT_EOS_core.txt', sep=";", header=None)
+        
+        NS_EoS_core_n_b = NS_Eos_core[0].values
+        NS_EoS_core_rho = NS_Eos_core[1].values
+        NS_EoS_core_P = NS_Eos_core[2].values
+        NS_EoS_core_Gamma = NS_Eos_core[3].values
+        
+        # Neutronitähden sisemmän kuoren tilanyhtälön ratkaistuja parametreja.
+        # //
+        # The solved parameters of the neutron star's inner crust equation of state.
+        NS_Eos_ic = pd.read_csv(
+            'NT_EOS_inner_crust.txt', sep=";", header=None)
+        
+        NS_EoS_ic_n_b = NS_Eos_ic[0].values
+        NS_EoS_ic_rho = NS_Eos_ic[1].values
+        NS_EoS_ic_P = NS_Eos_ic[2].values
+        NS_EoS_ic_Gamma = NS_Eos_ic[3].values
+        
+        # Neutronitähden ulomman kuoren ratkaistu tilanyhtälö
+        # paperista otetuilla alkuarvoilla
+        # //
+        # The solved equation of state for the outer crust of a neutron star
+        # with initial values ​​taken from the paper
+        NS_EoS_oc_r, NS_EoS_oc_m, NS_EoS_oc_P, NS_EoS_oc_RHO = SOLVE_TOV(
+            3, 
+            R_body=R_NS0,
+            kappa_choise=0, 
+            rho_K=2.5955e-13+0j,
+            p_K=5.13527e-16, a=1, 
+            p_c=5.13527e-16,
+            body="Valkoisen kääpiön (NS:n ulomman kuoren) \n")
+        
+        # Yhdistetään sisemmän kuoren ja ytimen energiatiheys ja paine. 
+        # Käännetään taulukot myös alkamaan ytimestä. 
+        # Muutetaan paine ja energiatiheyden yksiköt:
+        # //
+        # Connect the inner shell and core energy density and pressure. 
+        # Let's turn the tables too to start from the core. 
+        # Let's change the pressure and energy density units:
+            # [p] = [rho] = m**-2
+        
+        # Energiatiheys // Energy density
+        NS_EoS_ic_core_rho = unit_conversion(2, "RHO", np.flip(np.append(
+                NS_EoS_ic_rho, NS_EoS_core_rho), -1), 1)
+        # Paine // Pressure
+        NS_EoS_ic_core_P = unit_conversion(2, "P", np.flip(np.append(
+                NS_EoS_ic_P, NS_EoS_core_P), -1), 1)
+        
+        # Plotataan paine ja energiatiheys kuvaaja (rho, P) tutkimuspaperista.
+        # //
+        # Let's plot the pressure and energy density (rho, P) from the research paper
+        graph(NS_EoS_ic_core_P, NS_EoS_ic_core_rho, plt.scatter,
+              "NS EoS, (P, rho) - ic-core",
+              "Paine, P (m^-2)", "Energiatiheys, rho (m^-2)", 'log',
+              "NS:n energiatiheys paineen ftiona ic-core")
+        
+        # Yhdistetään paperin data ja ratkaistu ulomman kuoren malli.
+        # //
+        # The paper data and the solved model of the outer shell are combined.
+        NS_EoS_P = np.flip(np.unique(np.delete(
+            np.append(NS_EoS_ic_core_P.real, NS_EoS_oc_P.real), -1)), -1)
+        NS_EoS_RHO = np.flip(np.unique(np.delete(
+            np.append(NS_EoS_ic_core_rho.real, NS_EoS_oc_RHO.real), -1)), -1)
+        
+        # Plot
+        graph(NS_EoS_P, NS_EoS_RHO, plt.scatter, "NS EoS, (P, rho)",
+              "Paine, P (m^-2)", "Energiatiheys, rho (m^-2)", 'log',
+              "NS:n Energiatiheys paineen ftiona")
+        
+        # Määritetään interpoloitu funktio NS:n (p, rho)-datalle.
+        # //
+        # Let's define an interpolated function for NS (p, rho) data.
+        NS_EoS_interpolate = interp1d(NS_EoS_P, NS_EoS_RHO,kind='cubic',
+                                      bounds_error=False,
+                                      fill_value=(NS_EoS_RHO[-1], NS_EoS_RHO[0]))
+        
+        # Määritetään x-akselin paineen arvoille uusi tiheys.
+        # //
+        # Let's define a new density for the x-axis pressure values
+        NS_EoS_P_new = np.logspace(np.log10(NS_EoS_P[0]), np.log10(NS_EoS_P[-1]), 1000)
+        
+        # Piirretään interpoloidut datapisteet.
+        # //
+        # Let's plot the interpolated data points
+        graph(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new), plt.plot,
+              "NS EoS, (rho, P) interpolate", "Paine, P (m^-2)", 
+              "Energiatiheys, rho (m^-2)", 'log', "NS:n interpoloitu energiatiheys paineen ftiona")
+        
+        # Ratkaistaan nyt TOV uudestaan NS:n datalle ja mallinnetaan koko
+        # tähden rakenne säteen funktiona.
+        # //
+        # Let's now solve the TOV again for NS data and model the whole
+        # star structure as a function of radius.
+        NS_r, NS_m, NS_p, NS_rho = SOLVE_TOV(
+            3, R_body=R_NS0, kappa_choise=0,
+            rho_K=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
+            p_K=NS_EoS_P_new[2],
+            rho_c=NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
+            p_c=NS_EoS_P_new[2],
+            a=2,
+            interpolation=NS_EoS_interpolate,
+            rho_func=1,
+            body="Neutronitähden")
+        
+        
+        return NS_r, NS_m, NS_p, NS_rho
+    
+    # Vielä avaruuden kaarevuus luonnollisissa yksiköissä
+    # neutronitähden sisällä.
+    # //
+    # Also the curvature of space in natural units
+    # inside a neutron star.
+    Ricci_scalar(unit_conversion(
+        1, "P", unit_conversion(0, "P", NS_p, 1), -1), 
+        unit_conversion(
+            1, "RHO", unit_conversion(0, "RHO", NS_rho, 1), -1), NS_r)
