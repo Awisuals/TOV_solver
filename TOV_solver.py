@@ -295,7 +295,7 @@ def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
 
 def Ricci_scalar(p, rho, r):
     """
-    Computes the curvature scalar of space - the Ricci scalar
+    Compute the curvature scalar of space - the Ricci scalar
     and plots it.
 
     Parameters
@@ -932,8 +932,8 @@ def NS_MODEL():
         NS_EoS_interpolate(NS_EoS_P_new[2])+0j,
         NS_EoS_P_new[2],
         2,
-        NS_EoS_interpolate,
         1,
+        NS_EoS_interpolate,
         "Neutronitähden"))
     # Vielä avaruuden kaarevuus luonnollisissa yksiköissä
     # neutronitähden sisällä.
