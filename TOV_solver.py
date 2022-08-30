@@ -68,6 +68,7 @@ def unit_conversion(SYS, VAR, VAL, DIR):
         0 for geometrizied units
         1 for natural units
         2 for [p]=erg/cm**3 and [rho]=g/cm**3 -> GEOM.
+        3 for GEOM. -> NATURAL
 
     Possible conversion apply for:
         M, P and RHO.
@@ -95,7 +96,8 @@ def unit_conversion(SYS, VAR, VAL, DIR):
     VAR_TAU = ["M", "P", "RHO"]
     SYS_CON = [[1.3466e27, 1.2102e44, 1.2102e44],
                [1.7827e-27, 2.0852e37, 2.0852e37],
-               [1, 8.2627e-46, 7.4261e-25]]
+               [1, 8.2627e-46, 7.4261e-25],
+               [7.553710663600157e+53, 5803759.831191253, 5803759.831191253]]
     VAR_CON = SYS_CON[SYS]
     for i, var in enumerate(VAR_TAU):
         if VAR == var and DIR == 1:
@@ -296,7 +298,10 @@ def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
 def Ricci_scalar(p, rho, r):
     """
     Compute the curvature scalar of space - the Ricci scalar
-    and plots it.
+    and plots it. 
+    Params must be in geometrizied units:
+        [p] = m**-2 ja [rho] = m**-2
+    Plots in GeVs.
 
     Parameters
     ----------
@@ -311,9 +316,9 @@ def Ricci_scalar(p, rho, r):
 
     """
     R_scalar = -8*np.pi*(rho - 3*p)
-    graph(r, R_scalar, plt.plot,
-          "Avaruuden kaarevuus", "Säde, r", "Riccin skalaari, R", 
-          'linear', "Avaruuden kaarevuusskalaari")
+    graph(r, unit_conversion(3, "P", R_scalar, -1)*1e-9, plt.plot,
+          "Avaruuden kaarevuus", "Säde, r", "Riccin skalaari, R (eV)", 
+          'linear', "Avaruuden kaarevuusskalaari \n neutronitähden sisällä \n")
 
 
 # Määritetään Tolman-Oppenheimer-Volkoff - yhtälöt (m, p, EoS), 
@@ -418,7 +423,6 @@ def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
         rho = EoS_p2r(p, Gamma, Kappa)
     elif choise == 1:
         rho = EoS_cd_p2rho(interpolation, p)
-
     return rho
 
 
@@ -533,7 +537,7 @@ def main(model, args=[]):
     print("a = "            + str(a))
     print("rho_func = "     + str(rho_func))
     print("interpolate = "  + str(interpolation))
-    print("body = "         + body)
+    print("body = "         + body + "\n")
     
     # Määrätään vakioita.
     # //
@@ -684,18 +688,18 @@ def main(model, args=[]):
         # //
         # Let's plot the model of the solution on graphs in units:
         # [m] = kg, [p] = erg/cm**m ja [rho] = g/cm**3 
-        graph(r, unit_conversion(0, "M", m, 1),
-              plt.plot, "massa", "säde, r (m)", "massa, m (kg)", 'linear',
+        graph(r, unit_conversion(3, "M", m, 1),
+              plt.plot, "massa", "säde, r (m)", "massa, m (GeV)", 'linear', # kg
               body + " " + "massa säteen funktiona")
-        graph(r, unit_conversion(2, "P", p, -1),
-              plt.plot, "paine", "säde, r (m)", "p (erg/cm^3)", 'linear', 
+        graph(r, unit_conversion(3, "P", p, -1)*1e-9,
+              plt.plot, "paine", "säde, r (m)", "p (eV)", 'linear', # erg/cm^3
               body + " " + "paine säteen funktiona")
-        graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
+        graph(r, unit_conversion(3, "RHO", rho, -1)*1e-9, plt.plot,
               fr'$\rho_c$ = {rho_c.real}' '\n'
               fr'$K$ = {Kappa.real}' '\n' 
               fr'$\Gamma$ = {Gamma}',
-              "säde, r", "energiatiheys, rho (g/cm^3)", 'linear',
-              body + " " + "energiatiheys säteen funktiona")
+              "säde, r", "energiatiheys, rho (eV)", 'linear', # g/cm^3
+              body + " " + "energiatiheys säteen funktiona \n")
         return r.real, m.real, p.real, rho.real
     
     
@@ -705,9 +709,6 @@ def main(model, args=[]):
     # Ratkaistaan TOV valkoisen kääpiön alkuarvoille:
     # SOLVE_TOV(3, R_body=6e6, rho_K=1e-10+0j, rho_c=1e-10+0j, a=0, rho_func=0)
     
-    
-    
-
     
     # Ratkaistaan massa-säde relaatio. Etsitään TOV-yhtälöiden ratkaisuja
     # jollakin rhospan-alueella. Ratkaistaan yhtälöitä siis tähden keskipisteen eri
@@ -881,9 +882,10 @@ def NS_MODEL():
     # Plotataan paine ja energiatiheys kuvaaja (rho, P) tutkimuspaperista.
     # //
     # Let's plot the pressure and energy density (rho, P) from the research paper
-    graph(NS_EoS_ic_core_P, NS_EoS_ic_core_rho, plt.scatter,
+    graph(unit_conversion(3, "P", NS_EoS_ic_core_P, -1)*1e-9, 
+          unit_conversion(3, "RHO", NS_EoS_ic_core_rho, -1)*1e-9, plt.scatter,
           "NS EoS, (P, rho) - ic-core",
-          "Paine, P (m^-2)", "Energiatiheys, rho (m^-2)", 'log',
+          "Paine, P (eV)", "Energiatiheys, rho (eV)", 'log', # m^-2
           "NS:n energiatiheys paineen ftiona ic-core")
     
     # Yhdistetään paperin data ja ratkaistu ulomman kuoren malli.
@@ -895,8 +897,10 @@ def NS_MODEL():
         np.append(NS_EoS_ic_core_rho.real, NS_EoS_oc_RHO.real), -1)), -1)
     
     # Plot
-    graph(NS_EoS_P, NS_EoS_RHO, plt.scatter, "NS EoS, (P, rho)",
-          "Paine, P (m^-2)", "Energiatiheys, rho (m^-2)", 'log',
+    graph(unit_conversion(3, "P", NS_EoS_P, -1)*1e-9, 
+          unit_conversion(3, "P", NS_EoS_RHO, -1)*1e-9, 
+          plt.scatter, "NS EoS, (P, rho)",
+          "Paine, P (eV)", "Energiatiheys, rho (eV)", 'log', # m^-2
           "NS:n Energiatiheys paineen ftiona")
     
     # Määritetään interpoloitu funktio NS:n (p, rho)-datalle.
@@ -914,9 +918,11 @@ def NS_MODEL():
     # Piirretään interpoloidut datapisteet.
     # //
     # Let's plot the interpolated data points
-    graph(NS_EoS_P_new, NS_EoS_interpolate(NS_EoS_P_new), plt.plot,
-          "NS EoS, (rho, P) interpolate", "Paine, P (m^-2)", 
-          "Energiatiheys, rho (m^-2)", 'log', "NS:n interpoloitu energiatiheys paineen ftiona")
+    graph(unit_conversion(3, "P", NS_EoS_P_new, -1)*1e-9, 
+          unit_conversion(3, "P", NS_EoS_interpolate(NS_EoS_P_new), -1)*1e-9, 
+          plt.plot,
+          "NS EoS, (rho, P) interpolate", "Paine, P (eV)", # m^-2
+          "Energiatiheys, rho (eV)", 'log', "NS:n interpoloitu energiatiheys paineen ftiona")
     
     # Ratkaistaan nyt TOV uudestaan NS:n datalle ja mallinnetaan koko
     # tähden rakenne säteen funktiona.
@@ -940,10 +946,7 @@ def NS_MODEL():
     # //
     # Also the curvature of space in natural units
     # inside a neutron star.
-    Ricci_scalar(unit_conversion(
-        1, "P", unit_conversion(0, "P", NS_p, 1), -1), 
-        unit_conversion(
-            1, "RHO", unit_conversion(0, "RHO", NS_rho, 1), -1), NS_r)        
+    Ricci_scalar(NS_p, NS_rho, NS_r)        
             
     return NS_r, NS_m, NS_p, NS_rho
     
