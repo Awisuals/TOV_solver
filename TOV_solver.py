@@ -317,8 +317,8 @@ def Ricci_scalar(p, rho, r):
     """
     R_scalar = -8*np.pi*(rho - 3*p)
     graph(r, unit_conversion(3, "P", R_scalar, -1)*1e-9, plt.plot,
-          "Avaruuden kaarevuus", "Säde, r", "Riccin skalaari, R (eV)", 
-          'linear', "Avaruuden kaarevuusskalaari \n neutronitähden sisällä \n")
+          "Scalar curvature", "Radius, r", "Ricci scalar, R (eV)", 
+          'linear', "Scalar curvature inside neutron star \n")
 
 
 # Määritetään Tolman-Oppenheimer-Volkoff - yhtälöt (m, p, EoS), 
@@ -497,7 +497,7 @@ def main(model, args=[]):
     "Valkoisen kääpiön (NS:n ulomman kuoren) \n"], 
                     [], 
                     []]
-    
+    # TODO lisää params
     if model == "CUSTOM":
         n               =args[0]
         R_body          =args[1]
@@ -689,17 +689,17 @@ def main(model, args=[]):
         # Let's plot the model of the solution on graphs in units:
         # [m] = kg, [p] = erg/cm**m ja [rho] = g/cm**3 
         graph(r, unit_conversion(3, "M", m, 1),
-              plt.plot, "massa", "säde, r (m)", "massa, m (GeV)", 'linear', # kg
-              body + " " + "massa säteen funktiona")
+              plt.plot, "Mass", "Radius, r (m)", "Mass, m (GeV)", 'linear', # kg
+              body + " " + "mass as a function of radius")
         graph(r, unit_conversion(3, "P", p, -1)*1e-9,
-              plt.plot, "paine", "säde, r (m)", "p (eV)", 'linear', # erg/cm^3
-              body + " " + "paine säteen funktiona")
+              plt.plot, "Pressure", "Radius, r (m)", "Pressure (eV)", 'linear', # erg/cm^3
+              body + " " + "pressure as a function of radius")
         graph(r, unit_conversion(3, "RHO", rho, -1)*1e-9, plt.plot,
               fr'$\rho_c$ = {rho_c.real}' '\n'
               fr'$K$ = {Kappa.real}' '\n' 
               fr'$\Gamma$ = {Gamma}',
-              "säde, r", "energiatiheys, rho (eV)", 'linear', # g/cm^3
-              body + " " + "energiatiheys säteen funktiona \n")
+              "Radius, r", "Energy density, rho (eV)", 'linear', # g/cm^3
+              body + " " + "energy density as a function of radius \n")
         return r.real, m.real, p.real, rho.real
     
     
@@ -861,7 +861,7 @@ def NS_MODEL():
         1, 
         0,
         0,
-        "Valkoisen kääpiön (NS:n ulomman kuoren) \n"))
+        "Neutron star outer core model (polytrope) \n"))
     
     # Yhdistetään sisemmän kuoren ja ytimen energiatiheys ja paine. 
     # Käännetään taulukot myös alkamaan ytimestä. 
@@ -885,8 +885,8 @@ def NS_MODEL():
     graph(unit_conversion(3, "P", NS_EoS_ic_core_P, -1)*1e-9, 
           unit_conversion(3, "RHO", NS_EoS_ic_core_rho, -1)*1e-9, plt.scatter,
           "NS EoS, (P, rho) - ic-core",
-          "Paine, P (eV)", "Energiatiheys, rho (eV)", 'log', # m^-2
-          "NS:n energiatiheys paineen ftiona ic-core")
+          "Pressure, P (eV)", "Energy density, rho (eV)", 'log', # m^-2
+          "NS energy density as a function of pressure ic-core")
     
     # Yhdistetään paperin data ja ratkaistu ulomman kuoren malli.
     # //
@@ -900,8 +900,8 @@ def NS_MODEL():
     graph(unit_conversion(3, "P", NS_EoS_P, -1)*1e-9, 
           unit_conversion(3, "P", NS_EoS_RHO, -1)*1e-9, 
           plt.scatter, "NS EoS, (P, rho)",
-          "Paine, P (eV)", "Energiatiheys, rho (eV)", 'log', # m^-2
-          "NS:n Energiatiheys paineen ftiona")
+          "Pressure, P (eV)", "Energy denisty, rho (eV)", 'log', # m^-2
+          "NS energy density as a function of pressure")
     
     # Määritetään interpoloitu funktio NS:n (p, rho)-datalle.
     # //
@@ -921,8 +921,8 @@ def NS_MODEL():
     graph(unit_conversion(3, "P", NS_EoS_P_new, -1)*1e-9, 
           unit_conversion(3, "P", NS_EoS_interpolate(NS_EoS_P_new), -1)*1e-9, 
           plt.plot,
-          "NS EoS, (rho, P) interpolate", "Paine, P (eV)", # m^-2
-          "Energiatiheys, rho (eV)", 'log', "NS:n interpoloitu energiatiheys paineen ftiona")
+          "NS EoS, (rho, P) interpolate", "Pressure, P (eV)", # m^-2
+          "eEnergy density, rho (eV)", 'log', "NS interpolated energy density")
     
     # Ratkaistaan nyt TOV uudestaan NS:n datalle ja mallinnetaan koko
     # tähden rakenne säteen funktiona.
@@ -940,7 +940,7 @@ def NS_MODEL():
         2,
         1,
         NS_EoS_interpolate,
-        "Neutronitähden"))
+        "Neutron star"))
     # Vielä avaruuden kaarevuus luonnollisissa yksiköissä
     # neutronitähden sisällä.
     # //
