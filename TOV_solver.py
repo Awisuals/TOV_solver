@@ -426,7 +426,13 @@ def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
     return rho
 
 
-def TOV(r, y, K, G, interpolation, rho_func):
+def pressure_choiser(choise, m, p, rho, r):
+    if choise == 0:
+        p = -(rho+p)*(m + 4*np.pi*r**3*p)/(r*(r-2*m))
+    elif choise == 1:
+        p = -(m*rho)/(r**2)
+
+def TOV(r, y, K, G, interpolation, rho_func, p_func):
     """
     Let's define the TOV equations and return them in an array.
 
@@ -456,15 +462,14 @@ def TOV(r, y, K, G, interpolation, rho_func):
     dy = np.empty_like(y)
     # Massa säteen sisällä // Mass inside some radius
     dy[0] = 4*np.pi*rho*r**2
-    # TODO tee valitsin paineelle
     # Paine - REL // Pressure - REL
-    dy[1] = -(rho+p)*(m + 4*np.pi*r**3*p)/(r*(r-2*m))
+    dy[1] = pressure_choiser(p_func, m, p, rho, r)
     # Paine - EI-REL // Pressure - NON-REL
     # dy[1] = -(m*rho)/(r**2)
     return dy
 
 
-def found_radius(t, y, d1, d2, d3, d4):
+def found_radius(t, y, d1, d2, d3, d4, d5):
     """
     Event function: Zero of pressure
     ODE integration stops when this function returns True
@@ -484,7 +489,7 @@ def found_radius(t, y, d1, d2, d3, d4):
         Checks when pressure reaches zero.
 
     """
-    d1, d2, d3, d4 = d1, d2, d3, d4
+    d1, d2, d3, d4, d5 = d1, d2, d3, d4, d5
     return y[1].real
 
 
@@ -493,10 +498,17 @@ def main(model, args=[]):
     model_choise = ["EP", "NS", "WD_NREL", 
                     "WD_REL", "MSS_RADZONE", "SS", "GC"]
     
-    model_params = [[3, 10000, 0, 2.5955e-13+0j, 5.13527e-16, 1, 5.13527e-16,
-    "Valkoisen kääpiön (NS:n ulomman kuoren) \n"], 
+    model_params = [[0.3, 6e6, 1, 4.084355e-24+0j, 0, 4.084355e-24+0j, 0, 0, 0, 1, 0, 
+                     "Rocky exoplanet"], 
+                    [], 
+                    [], 
+                    [3, 6e6, 1, 7.4261e-11+0j, 0, 7.4261e-11+0j, 0, 0, 0, 0, 0, 
+                     "White Dwarf"],
+                    [], 
                     [], 
                     []]
+    
+    
     # TODO lisää params
     if model == "CUSTOM":
         n               =args[0]
@@ -508,11 +520,14 @@ def main(model, args=[]):
         p_c             =args[6]
         a               =args[7]
         rho_func        =args[8]
-        interpolation   =args[9]
-        body            =args[10]
+        p_func          =args[9]
+        interpolation   =args[10]
+        body            =args[11]
     else:
         for i, m in enumerate(model_choise):
-            if m == model_choise[i]:
+            if m == model:
+                print(m)
+                print(i)
                 n               =model_params[i][0]
                 R_body          =model_params[i][1] 
                 kappa_choise    =model_params[i][2]
@@ -522,11 +537,12 @@ def main(model, args=[]):
                 p_c             =model_params[i][6]
                 a               =model_params[i][7]
                 rho_func        =model_params[i][8]
-                interpolation   =model_params[i][9]
-                body            =model_params[i][10]
+                p_func          =model_params[i][9]
+                interpolation   =model_params[i][10]
+                body            =model_params[i][11]
                 
     print("Model of your choise and semi-realistic params for it: \n")
-    print("Model = "        + model)
+    print("Model = "        + body)
     print("n = "            + str(n))
     print("R_body = "       + str(R_body))
     print("kappa_choise = " + str(kappa_choise))
@@ -536,6 +552,7 @@ def main(model, args=[]):
     print("p_c = "          + str(p_c))
     print("a = "            + str(a))
     print("rho_func = "     + str(rho_func))
+    print("p_func = "       + str(p_func))
     print("interpolate = "  + str(interpolation))
     print("body = "         + body + "\n")
     
@@ -578,7 +595,7 @@ def main(model, args=[]):
     # easier. The function is given a bunch of parameters and it solves
     # previously defined equations.
     def SOLVE_TOV(n, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
-                  rho_c=0, p_c=0, a=0, rho_func=0, interpolation=0, body=""):
+                  rho_c=0, p_c=0, a=0, rho_func=0, p_func=0, interpolation=0, body=""):
         """
         Appropriate initial values ​​and equations are chosen. Solves TOV equations
         in this case for the corresponding astrophysical body. As a solution
@@ -626,6 +643,10 @@ def main(model, args=[]):
                 0=Polytrope EoS.
                 1=Interpolated EoS from data.
             The default is 0..
+        p_func : int, optional
+            Choise for either newtonian or relativistic pressure.:
+                0=TOV
+                1=NEWT
         interpolation : interpolate, optional
             Has to be given if choise rho_func=1. Otherwise can be ignored.
             The default is 0..
@@ -663,7 +684,7 @@ def main(model, args=[]):
         # Let's solve the TOV with the given parameters
         soln = solve_ivp(TOV, (r0, rf), y0, method='BDF',
                          dense_output=True, events=found_radius,
-                         args=(Kappa, Gamma, interpolation, rho_func))
+                         args=(Kappa, Gamma, interpolation, rho_func, p_func))
     
         print("Solverin parametreja:")
         print(soln.nfev, 'evaluations required')
@@ -683,28 +704,30 @@ def main(model, args=[]):
         print("Säde: \n" + str(r.real) + "\n Massa: \n" + str(m.real) +
               "\n Paine: \n" + str(p.real) + "\n Energiatiheys: \n" + str(rho.real))
         print("\n \n")
-    
+            
+        rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
+        
         # Piirretään ratkaisun malli kuvaajiin yksiköissä:
         # //
         # Let's plot the model of the solution on graphs in units:
         # [m] = kg, [p] = erg/cm**m ja [rho] = g/cm**3 
-        graph(r, unit_conversion(3, "M", m, 1),
-              plt.plot, "Mass", "Radius, r (m)", "Mass, m (GeV)", 'linear', # kg
+        graph(r, unit_conversion(1, "M", m, -1),
+              plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
               body + " " + "mass as a function of radius")
-        graph(r, unit_conversion(3, "P", p, -1)*1e-9,
-              plt.plot, "Pressure", "Radius, r (m)", "Pressure (eV)", 'linear', # erg/cm^3
+        graph(r, unit_conversion(2, "P", p, -1),
+              plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
               body + " " + "pressure as a function of radius")
-        graph(r, unit_conversion(3, "RHO", rho, -1)*1e-9, plt.plot,
-              fr'$\rho_c$ = {rho_c.real}' '\n'
+        graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
+              fr'$\rho_c$ = {rho_c0}' '\n'
               fr'$K$ = {Kappa.real}' '\n' 
               fr'$\Gamma$ = {Gamma}',
-              "Radius, r", "Energy density, rho (eV)", 'linear', # g/cm^3
+              "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
               body + " " + "energy density as a function of radius \n")
         return r.real, m.real, p.real, rho.real
     
     
     r_sol, m_sol, p_sol, rho_sol = SOLVE_TOV(n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
-                             a, rho_func, interpolation, body)
+                             a, rho_func, p_func, interpolation, body)
     
     # Ratkaistaan TOV valkoisen kääpiön alkuarvoille:
     # SOLVE_TOV(3, R_body=6e6, rho_K=1e-10+0j, rho_c=1e-10+0j, a=0, rho_func=0)
@@ -754,14 +777,15 @@ def main(model, args=[]):
         """
     
         # Build 200 star models
-        rhospan = np.linspace(rho_min, rho_max, 100)
+        rhospan = np.linspace(rho_min, rho_max, 500)
         R = []
         M = []
         # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
         # //
         # Solve the TOV for each rho0 in the range of rhospan.
         for rho0 in rhospan:
-            r, m, p, rho = SOLVE_TOV(R_WD0, 3, rho_cK=1e-11+0j, rho_c=rho0)
+            r, m, p, rho = SOLVE_TOV(n, R_body, kappa_choise, rho0, p_K, rho0, p_c, 
+                                     a, rho_func, p_func, interpolation, body)
             r_boundary = find_radius(p, r, raja=0)
             m_boundary = find_mass_in_radius(m, r, r_boundary)
             R.append(r_boundary)
@@ -777,9 +801,9 @@ def main(model, args=[]):
               "Massa", 'linear', "Massa-säde")
         return R, M
     
-    return r_sol, m_sol, p_sol, rho_sol
+    # MR_relaatio(7.4261e-12+0j, 7.4261e-11+0j)
     
-    # MR_relaatio(1e-16+0j, 1e-8+0j)
+    return r_sol, m_sol, p_sol, rho_sol
 
     
     
@@ -860,6 +884,7 @@ def NS_MODEL():
         5.13527e-16,
         1, 
         0,
+        0, 
         0,
         "Neutron star outer core model (polytrope) \n"))
     
@@ -939,6 +964,7 @@ def NS_MODEL():
         NS_EoS_P_new[2],
         2,
         1,
+        0,
         NS_EoS_interpolate,
         "Neutron star"))
     # Vielä avaruuden kaarevuus luonnollisissa yksiköissä
