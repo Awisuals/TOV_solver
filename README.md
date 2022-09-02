@@ -2,6 +2,13 @@
 
 # Program to solve the astrophysical hydrostatic equilibrium equation - Tolman-Oppenheimer-Volkoff equation as well as to model some astrophysical bodies.
 
+Vaaditut paketit:
+    from scipy.integrate import solve_ivp
+    import numpy as np 
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    from scipy.interpolate import interp1d
+
 Tämän ohjelma ratkaisee yhdistetyn epälineaarisen
 differentiaaliryhmän. Yhtälöt ovat ns. TOV-yhtälöt, jotka kuvaavat yhdessä
 tähden rakenteen.
@@ -39,6 +46,14 @@ ja piirtää tästä kuvaajan.:
     R = -8*np.pi*G*(rho - 3*p)
     
 // Eng.
+
+Required packets:
+    from scipy.integrate import solve_ivp
+    import numpy as np 
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    from scipy.interpolate import interp1d
+
 
 This program solves the combined nonlinear DE-equation group. 
 The equations are the so-called TOV equations that describe together
