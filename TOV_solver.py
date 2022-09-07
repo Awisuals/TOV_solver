@@ -431,6 +431,8 @@ def pressure_choiser(choise, m, p, rho, r):
         p = -(rho+p)*(m + 4*np.pi*r**3*p)/(r*(r-2*m))
     elif choise == 1:
         p = -(m*rho)/(r**2)
+    return p
+
 
 def TOV(r, y, K, G, interpolation, rho_func, p_func):
     """
