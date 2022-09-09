@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.interpolate import interp1d
+from decimal import *
 """
 
 Yleisiä funktioita hyötykäyttöön. // General functions for utility use.
@@ -147,7 +148,10 @@ def kappa_from_r0rho0n(r0, rho0, n):
         Constant of proportionality.
 
     """
-    return (r0**2*4*np.pi*rho0**(1+1/n))/(n+1)
+    k = (r0**2*4*np.pi*rho0**(1+1/n))/(n+1)
+    if k == 0:
+        k += 1
+    return k
 
 
 def kappa_from_p0rho0(p0, rho0, G):
@@ -170,7 +174,10 @@ def kappa_from_p0rho0(p0, rho0, G):
         Constant of proportionality.
 
     """
-    return (p0)/(rho0**G)
+    k = (p0)/(rho0**G)
+    if k == 0:
+        k += 1e-6
+    return k
 
 
 def find_radius(p_t, r_t, raja=0):
@@ -292,6 +299,7 @@ def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
         rho = rho0
         p = p0
     m = 4./3.*np.pi*rho*rmin**3
+    print("m, p, rho: " + str(m) + str(p) + str(rho))
     return m, p, rho
 
 
@@ -462,12 +470,9 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
 
     # Ratkaistavat yhtälöt // The equations to be solved
     dy = np.empty_like(y)
-    # Massa säteen sisällä // Mass inside some radius
+    # Massa ja paine // Mass and pressure
     dy[0] = 4*np.pi*rho*r**2
-    # Paine - REL // Pressure - REL
     dy[1] = pressure_choiser(p_func, m, p, rho, r)
-    # Paine - EI-REL // Pressure - NON-REL
-    # dy[1] = -(m*rho)/(r**2)
     return dy
 
 
@@ -499,19 +504,19 @@ def main(model, args=[]):
     
     model_choise = ["EP", "NS", "WD_NREL", 
                     "WD_REL", "MSS_RADZONE", "SS", "GC"]
-    
-    model_params = [[0.3, 6e6, 1, 4.084355e-24+0j, 0, 4.084355e-24+0j, 0, 0, 0, 1, 0, 
+    # TODo lisaa naita
+    model_params = [[1e-6, 6e6, 1, 4.084355e-24+0j, 0, 4.084355e-24+0j, 3.013985079e-33, 2, 0, 1, 0, 
                      "Rocky exoplanet"], 
-                    [], 
-                    [], 
-                    [3, 6e6, 1, 7.4261e-11+0j, 0, 7.4261e-11+0j, 0, 0, 0, 0, 0, 
-                     "White Dwarf"],
+                    [0.5, 10, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
+                     "Neutron Star (polytrope)"], 
+                    [1.5, 6e6, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
+                     "Non-relativistic White Dwarf"], 
+                    [3, 6e6, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
+                     "Relativistic White Dwarf"],
                     [], 
                     [], 
                     []]
     
-    
-    # TODO lisää params
     if model == "CUSTOM":
         n               =args[0]
         R_body          =args[1]
@@ -542,21 +547,6 @@ def main(model, args=[]):
                 p_func          =model_params[i][9]
                 interpolation   =model_params[i][10]
                 body            =model_params[i][11]
-                
-    print("Model of your choise and semi-realistic params for it: \n")
-    print("Model = "        + body)
-    print("n = "            + str(n))
-    print("R_body = "       + str(R_body))
-    print("kappa_choise = " + str(kappa_choise))
-    print("rho_K = "        + str(rho_K))
-    print("p_K = "          + str(p_K))
-    print("rho_c = "        + str(rho_c))
-    print("p_c = "          + str(p_c))
-    print("a = "            + str(a))
-    print("rho_func = "     + str(rho_func))
-    print("p_func = "       + str(p_func))
-    print("interpolate = "  + str(interpolation))
-    print("body = "         + body + "\n")
     
     # Määrätään vakioita.
     # //
@@ -668,11 +658,31 @@ def main(model, args=[]):
     
         """
         # Asetetaan alkuarvot // Set initial values
+        
+        # Tulostetaan annetut parametrit // Print given params
+        print("Model of your choise and semi-realistic params for it: \n")
+        print("Model = "        + body)
+        print("n = "            + str(n))
+        print("R_body = "       + str(R_body))
+        print("kappa_choise = " + str(kappa_choise))
+        print("rho_K = "        + str(rho_K))
+        print("p_K = "          + str(p_K))
+        print("rho_c = "        + str(rho_c))
+        print("p_c = "          + str(p_c))
+        print("a = "            + str(a))
+        print("rho_func = "     + str(rho_func))
+        print("p_func = "       + str(p_func))
+        print("interpolate = "  + str(interpolation))
+        print("body = "         + body + "\n")
+        
         Gamma = gamma_from_n(n)
         if kappa_choise == 0:
             Kappa = kappa_from_p0rho0(p_K, rho_K, Gamma)
         elif kappa_choise == 1:
             Kappa = kappa_from_r0rho0n(R_body, rho_K, n)
+        
+        print("Gamman ja Kappan arvot. \n " + "Gamma: " + str(Gamma) + 
+              "\n Kappa: " + str(Kappa) + "\n")
         
         m, p, rho = set_initial_conditions(r0, Gamma, Kappa, rho_c, p_c, a)
         y0 = m, p
@@ -712,13 +722,13 @@ def main(model, args=[]):
         # Piirretään ratkaisun malli kuvaajiin yksiköissä:
         # //
         # Let's plot the model of the solution on graphs in units:
-        # [m] = kg, [p] = erg/cm**m ja [rho] = g/cm**3 
+        # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
         graph(r, unit_conversion(1, "M", m, -1),
               plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
-              body + " " + "mass as a function of radius")
+              body + " " + "mass as a function of radius \n")
         graph(r, unit_conversion(2, "P", p, -1),
               plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-              body + " " + "pressure as a function of radius")
+              body + " " + "pressure as a function of radius \n")
         graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
               fr'$\rho_c$ = {rho_c0}' '\n'
               fr'$K$ = {Kappa.real}' '\n' 
