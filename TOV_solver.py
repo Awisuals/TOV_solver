@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.interpolate import interp1d
+step = 0
 # from decimal import *
 """
 
@@ -49,7 +50,7 @@ def graph(x, y, style, label, xlabel, ylabel, scale, title):
     style(x, y, label=label)
     
     # Piirtää suoran y = 0. // Draws horizontal line y = 0.
-    plt.axhline(y=0, color='r', linestyle='--')
+    # plt.axhline(y=0, color='r', linestyle='--')
     
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -490,6 +491,7 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
         Integroitavat funktiot.
 
     """
+    global step
     # Asetetaan muuttujat taulukkoon
     # Energiatiheys valitaan valitsin-funktiossa.
     # //
@@ -497,13 +499,24 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
     # The energy density is selected in the selector function.
     m = y[0].real + 0j                            
     p = y[1].real + 0j
-    rho = EoS_choiser(rho_func, interpolation, p, G, K)
+    rho = EoS_choiser(rho_func, interpolation, p, G, K).real + 0j
+
+    # print("Massa: " + str(m.real) + "\n" + 
+    #       "Paine: " + str(p.real) + "\n" + 
+    #       "Energiatiheys: " + str(rho.real) + "\n" + 
+    #       "Säde: " + str(r) + "\n")
 
     # Ratkaistavat yhtälöt // The equations to be solved
     dy = np.empty_like(y)
     # Massa ja paine // Mass and pressure
     dy[0] = 4*np.pi*rho*r**2                        # dmdr
     dy[1] = pressure_choiser(p_func, m, p, rho, r)  # dpdr
+    
+    # print("Massan derivaatta: " + str(dy[0].real) + "\n" + 
+    #       "Paineen derivaatta: " + str(dy[1].real) + "\n" +
+    #       "Steppi: " + str(step) + "\n")
+    
+    step += 1
     return dy
 
 
@@ -542,7 +555,7 @@ def main(model, args=[]):
                      "Neutron Star (polytrope)"], 
                     [1.5, 6e6, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 6e6, 0.25, 1.8178813419269544e-13+0j, 0, 1.8178813419269544e-13+0j, 0, 0, 0, 0, 0, 
+                    [3, 6e6, 0.25, 1.8178813419269544e-18+0j, 0, 1.8178813419269544e-18+0j, 0, 0, 0, 0, 0, 
                      "Relativistic White Dwarf"],
                     [], 
                     [], 
@@ -596,7 +609,7 @@ def main(model, args=[]):
     # //
     # Let's set the integration parameters.
     # Integrator adaptive, stops the integration at the star boundary.
-    rmin, rmax = 1e-3, np.inf
+    rmin, rmax = 1e-3, 100 # np.inf #100 
     N = 500
     rspan = np.linspace(rmin, rmax, N)
     
@@ -688,6 +701,12 @@ def main(model, args=[]):
             Energy density solution for modeled body.
     
         """
+        # Alustetaan ratkaisuille taulukot
+        r_sol = []
+        m_sol = []
+        p_sol = []
+        rho_sol = []
+        
         # Asetetaan alkuarvot // Set initial values
         
         # Tulostetaan annetut parametrit // Print given params
@@ -727,16 +746,19 @@ def main(model, args=[]):
         #                  dense_output=True, events=found_radius,
         #                  args=(Kappa, Gamma, interpolation, rho_func, p_func))
     
-        soln = solve_ivp(TOV, (r0, rf), (m, p), method='BDF',
-                         dense_output=True, events=found_radius,
+        soln = solve_ivp(TOV, (r0, rf), (m, p), method='BDF', first_step=1e-6,
+                          dense_output=True, events=found_radius, max_step=1e-3,
                          args=(Kappa, Gamma, interpolation, rho_func, p_func))
-    
+        
         print("Solverin parametreja:")
         print(soln.nfev, 'evaluations required')
         print(soln.t_events)
         print(soln.y_events)
         print("\n \n")
-    
+            
+        # solution = soln.sol
+        # print("Solutions: \n*2" + str(solution))
+        
         # TOV ratkaisut // TOV solutions
         # Ratkaisut yksiköissä // Solutions in units:
         # [m] = kg, [p] = m**-2 ja [rho] = m**-2
@@ -745,30 +767,58 @@ def main(model, args=[]):
         p = soln.y[1].real
         rho = EoS_p2r(p, Gamma, Kappa)
     
+        r0_1, rf_1 = r[-1], np.inf
+        soln1 = solve_ivp(TOV, (r0_1, rf_1), (m[-1], p[-1]), method='BDF', first_step=1e-6,
+                          dense_output=True, events=found_radius, # max_step=1e-3,
+                         args=(Kappa, Gamma, interpolation, rho_func, p_func))
+    
+        r1 = soln1.t
+        m1 = soln1.y[0].real
+        p1 = soln1.y[1].real
+        rho1 = EoS_p2r(p1, Gamma, Kappa)
+        
+        r_whole = np.append(r, r1)
+        m_whole = np.append(m, m1)
+        p_whole = np.append(p, p1)
+        rho_whole = np.append(rho, rho1)
+        
         print("Saadut TOV ratkaisut ([m] = kg, [p] = m**-2 ja [rho] = m**-2): \n")
-        print("Säde: \n \n" + str(r.real) + "\n \n Massa: \n \n" + str(m.real) +
-              "\n \n Paine: \n \n" + str(p.real) + "\n \n Energiatiheys: \n \n" + str(rho.real))
+        print("Säde: \n \n" + str(r_whole.real) + "\n \n Massa: \n \n" + str(m_whole.real) +
+              "\n \n Paine: \n \n" + str(p_whole.real) + "\n \n Energiatiheys: \n \n" + str(rho_whole.real))
         print("\n \n")
 
         rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
         
-        # # Piirretään ratkaisun malli kuvaajiin yksiköissä:
-        # # //
-        # # Let's plot the model of the solution on graphs in units:
-        # # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
-        graph(r, unit_conversion(1, "M", m, -1),
-              plt.scatter, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
+        # # # Piirretään ratkaisun malli kuvaajiin yksiköissä:
+        # # # //
+        # # # Let's plot the model of the solution on graphs in units:
+        # # # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
+        # graph(r, unit_conversion(1, "M", m, -1),
+        #       plt.scatter, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
+        #       body + " " + "mass as a function of radius \n")
+        # graph(r, unit_conversion(2, "P", p, -1),
+        #       plt.scatter, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+        #       body + " " + "pressure as a function of radius \n")
+        # graph(r, unit_conversion(2, "RHO", rho, -1), plt.scatter,
+        #       fr'$\rho_c$ = {rho_c0}' '\n'
+        #       fr'$K$ = {Kappa.real}' '\n' 
+        #       fr'$\Gamma$ = {Gamma}',
+        #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+        #       body + " " + "energy density as a function of radius \n")
+        
+        graph(r_whole, m_whole,
+              plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
               body + " " + "mass as a function of radius \n")
-        graph(r, unit_conversion(2, "P", p, -1),
-              plt.scatter, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+        graph(r_whole, p_whole,
+              plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
               body + " " + "pressure as a function of radius \n")
-        graph(r, unit_conversion(2, "RHO", rho, -1), plt.scatter,
+        graph(r_whole, rho_whole, plt.plot,
               fr'$\rho_c$ = {rho_c0}' '\n'
               fr'$K$ = {Kappa.real}' '\n' 
               fr'$\Gamma$ = {Gamma}',
               "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
               body + " " + "energy density as a function of radius \n")
- 
+        
         # graph(r, m,
         #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
         #       body + " " + "mass as a function of radius \n")
@@ -782,7 +832,21 @@ def main(model, args=[]):
         #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
         #       body + " " + "energy density as a function of radius \n")
         
-        print("Tähden säde: \n" + str(r[-1]) + "\n Tähden massa: \n" + str(m[-1]))
+        # graph(r1, m1,
+        #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
+        #       body + " " + "mass as a function of radius \n")
+        # graph(r1, p1,
+        #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+        #       body + " " + "pressure as a function of radius \n")
+        # graph(r1, rho1, plt.plot,
+        #       fr'$\rho_c$ = {rho_c0}' '\n'
+        #       fr'$K$ = {Kappa.real}' '\n' 
+        #       fr'$\Gamma$ = {Gamma}',
+        #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+        #       body + " " + "energy density as a function of radius \n")
+        
+        print("Tähden säde: \n" + str(r_whole[-1]) + 
+              "\n Tähden massa: \n" + str(m_whole[-1]))
         
         return r.real, m.real, p.real, rho.real
     
@@ -869,7 +933,7 @@ def main(model, args=[]):
               "Massa", 'linear', "Massa-säde")
         return R, M
     
-    # MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 50)
+    MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 10)
     
     return r_sol, m_sol, p_sol, rho_sol
 
