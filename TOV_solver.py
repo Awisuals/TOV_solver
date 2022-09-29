@@ -149,7 +149,7 @@ def kappa_from_r0rho0n(r0, rho0, n):
         Constant of proportionality.
 
     """
-    k = (r0**2*4*np.pi*rho0**(1+1/n))/(n+1)
+    k = (r0**2*4*np.pi*rho0**(1-1/n))/(n+1)
     if k == 0:
         k += 1
     return k
@@ -610,6 +610,7 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     
     # Tulostetaan annetut parametrit // Print given params
     print("Model of your choise and semi-realistic params for it: \n")
+    print("Integration range = " + str(ir))
     print("Model = "        + body)
     print("n = "            + str(n))
     print("R_body = "       + str(R_body))
@@ -626,6 +627,7 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     
     Gamma = gamma_from_n(n)
     Kappa = kappa_choiser(kappa_choise, p_K, rho_K, Gamma, R_body, n)
+    # Kappa = 
 
     
     print("Gamman ja Kappan arvot. \n " + "Gamma: " + str(Gamma) + 
@@ -645,8 +647,8 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     #                  dense_output=True, events=found_radius,
     #                  args=(Kappa, Gamma, interpolation, rho_func, p_func))
 
-    soln = solve_ivp(TOV, (rs, rf), (m, p), method='BDF', first_step=1e-6,
-                      dense_output=True, events=found_radius, max_step=1e-3,
+    soln = solve_ivp(TOV, (rs, rf), (m.real, p.real), method='Radau', first_step=1e-6,
+                      dense_output=True, events=found_radius, # max_step=1e-3,
                      args=(Kappa, Gamma, interpolation, rho_func, p_func))
     
     print("Solverin parametreja:")
@@ -667,7 +669,7 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     rho = EoS_p2r(p, Gamma, Kappa)
 
     r0_1, rf_1 = r[-1], np.inf
-    soln1 = solve_ivp(TOV, (r0_1, rf_1), (m[-1], p[-1]), method='BDF', first_step=1e-6,
+    soln1 = solve_ivp(TOV, (r0_1, rf_1), (m[-1].real, p[-1].real), method='Radau', first_step=1e-6,
                       dense_output=True, events=found_radius, # max_step=1e-3,
                      args=(Kappa, Gamma, interpolation, rho_func, p_func))
 
@@ -705,39 +707,13 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
     #       body + " " + "energy density as a function of radius \n")
     
-    graph(r_whole, m_whole,
-          plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
-          body + " " + "mass as a function of radius \n")
-    graph(r_whole, p_whole,
-          plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-          body + " " + "pressure as a function of radius \n")
-    graph(r_whole, rho_whole, plt.plot,
-          fr'$\rho_c$ = {rho_c0}' '\n'
-          fr'$K$ = {Kappa.real}' '\n' 
-          fr'$\Gamma$ = {Gamma}',
-          "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-          body + " " + "energy density as a function of radius \n")
-    
-    # graph(r, m,
+    # graph(r_whole, m_whole,
     #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
     #       body + " " + "mass as a function of radius \n")
-    # graph(r, p,
+    # graph(r_whole, p_whole,
     #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
     #       body + " " + "pressure as a function of radius \n")
-    # graph(r, rho, plt.plot,
-    #       fr'$\rho_c$ = {rho_c0}' '\n'
-    #       fr'$K$ = {Kappa.real}' '\n' 
-    #       fr'$\Gamma$ = {Gamma}',
-    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-    #       body + " " + "energy density as a function of radius \n")
-    
-    # graph(r1, m1,
-    #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
-    #       body + " " + "mass as a function of radius \n")
-    # graph(r1, p1,
-    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-    #       body + " " + "pressure as a function of radius \n")
-    # graph(r1, rho1, plt.plot,
+    # graph(r_whole, rho_whole, plt.plot,
     #       fr'$\rho_c$ = {rho_c0}' '\n'
     #       fr'$K$ = {Kappa.real}' '\n' 
     #       fr'$\Gamma$ = {Gamma}',
@@ -779,13 +755,13 @@ def main(model, args=[]):
     model_choise = ["EP", "NS", "WD_NREL", 
                     "WD_REL", "MSS_RADZONE", "SS", "GC"]
     # TODO lisaa naita
-    model_params = [[1e-6, 6e6, 1, 4.084355e-24+0j, 0, 4.084355e-24+0j, 3.013985079e-33, 2, 0, 1, 0, 
+    model_params = [[1e-6, 7e8, 1, 4.084355e-24+0j, 0, 4.084355e-24+0j, 3.013985079e-33, 2, 0, 1, 0, 
                      "Rocky exoplanet"], 
                     [0.5, 10, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
                      "Neutron Star (polytrope)"], 
-                    [1.5, 6e6, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
+                    [0, 1.5, 7e8, 0.25, 1.8178813419269544e-20+0j, 0, 1.8178813419269544e-20+0j, 0, 0, 0, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 6e6, 0.25, 1.8178813419269544e-15+0j, 0, 1.8178813419269544e-15+0j, 0, 0, 0, 0, 0, 
+                    [3, 7e8, 0.1, 1.8178813419269544e-10+0j, 0, 1.8178813419269544e-10+0j, 0, 0, 0, 0, 0, 
                      "Relativistic White Dwarf"],
                     [], 
                     [], 
@@ -826,7 +802,7 @@ def main(model, args=[]):
     # //
     # Determine constants.
     M_sun = 2e30              # kg
-    R_WD0 = 6e6               # m
+    R_WD0 = 7e8               # m
     
     # Geometrisoidut yksiköt (Luonnollisia yksiköitä) 
     # // 
@@ -839,7 +815,7 @@ def main(model, args=[]):
     # //
     # Let's set the integration parameters.
     # Integrator adaptive, stops the integration at the star boundary.
-    rmin, rmax = 1e-3, 500 # np.inf #100 
+    rmin, rmax = 1e-3, 1000 # np.inf #100 
     N = 500
     rspan = np.linspace(rmin, rmax, N)
     
@@ -853,7 +829,7 @@ def main(model, args=[]):
     found_radius.terminal = True
     found_radius.direction = -1    
     
-    r_sol, m_sol, p_sol, rho_sol = SOLVE_TOV((r0, rf),n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
+    r_sol, m_sol, p_sol, rho_sol = SOLVE_TOV([r0, rf], n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
                              a, rho_func, p_func, interpolation, body)
     
     return r_sol, m_sol, p_sol, rho_sol
@@ -908,12 +884,17 @@ def MR_relaatio(rho_min, rho_max, N_MR):
     print("rhospan: " + str(rhospan))
     R = []
     M = []
+    KAPPA = 0.05
     # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
     # //
     # Solve the TOV for each rho0 in the range of rhospan.
     for rho0 in rhospan:
-        r, m, p, rho = main("CUSTOM", [3, 6e6, 0.25, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
-                     "Relativistic White Dwarf"]) 
+        r, m, p, rho = main("CUSTOM", [3, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
+                       "Relativistic White Dwarf"]) 
+        KAPPA += 0.5
+        # main("CUSTOM", [1.5, 6e6, 1, rho0+0j, 0, rho0+0j, 0, 0, 0, 1, 0, 
+        #   "Non-relativistic White Dwarf"])
+        
         # r_boundary = find_radius(p, r, raja=0.05)
         r_boundary = r[-1]
         # m_boundary = find_mass_in_radius(m, r, r_boundary)
@@ -925,13 +906,12 @@ def MR_relaatio(rho_min, rho_max, N_MR):
     # Print and plot the mass-radius relation.
     print("Tulostetaan ratkaistut massat ja niitä vastaavat säteet: \n")
     print("Säteet: \n " + str(R) + "\n Massat: \n" + str(M))
-    
     R = np.array(R)
     M = np.array(M)
 
     graph(R, unit_conversion(1, "M", M, -1), plt.scatter, "Massa-säde - relaatio", "Säde",
           "Massa", 'linear', "Massa-säde")
-    graph(R, unit_conversion(1, "M", M, -1), plt.plot, "Massa-säde - relaatio", "Säde",
+    graph(R, unit_conversion(1, "M", M, -1)/2e30, plt.plot, "Massa-säde - relaatio", "Säde",
           "Massa", 'linear', "Massa-säde")
     return R, M
 
@@ -1102,6 +1082,6 @@ def NS_MODEL():
             
     return NS_r, NS_m, NS_p, NS_rho
     
-# main("WD_REL")
+main("WD_REL")
 # 1e-18, 1e-13
-MR_relaatio(1.8178813419269544e-16+0j, 1.8178813419269544e-14+0j, 5)
+MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-10+0j, 750)
