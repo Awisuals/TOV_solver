@@ -50,7 +50,7 @@ def graph(x, y, style, label, xlabel, ylabel, scale, title):
     style(x, y, label=label)
     
     # Piirtää suoran y = 0. // Draws horizontal line y = 0.
-    # plt.axhline(y=0, color='r', linestyle='--')
+    plt.axhline(y=0, color='r', linestyle='--')
     
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -694,18 +694,18 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     # # # //
     # # # Let's plot the model of the solution on graphs in units:
     # # # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
-    # graph(r, unit_conversion(1, "M", m, -1),
-    #       plt.scatter, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
-    #       body + " " + "mass as a function of radius \n")
-    # graph(r, unit_conversion(2, "P", p, -1),
-    #       plt.scatter, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-    #       body + " " + "pressure as a function of radius \n")
-    # graph(r, unit_conversion(2, "RHO", rho, -1), plt.scatter,
-    #       fr'$\rho_c$ = {rho_c0}' '\n'
-    #       fr'$K$ = {Kappa.real}' '\n' 
-    #       fr'$\Gamma$ = {Gamma}',
-    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-    #       body + " " + "energy density as a function of radius \n")
+    graph(r_whole, unit_conversion(1, "M", m_whole, -1),
+          plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
+          body + " " + "mass as a function of radius \n")
+    graph(r_whole, unit_conversion(2, "P", p_whole, -1),
+          plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+          body + " " + "pressure as a function of radius \n")
+    graph(r_whole, unit_conversion(2, "RHO", rho_whole, -1), plt.plot,
+          fr'$\rho_c$ = {rho_c0}' '\n'
+          fr'$K$ = {Kappa.real}' '\n' 
+          fr'$\Gamma$ = {Gamma}',
+          "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+          body + " " + "energy density as a function of radius \n")
     
     # graph(r_whole, m_whole,
     #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
@@ -759,9 +759,9 @@ def main(model, args=[]):
                      "Rocky exoplanet"], 
                     [0.5, 10, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
                      "Neutron Star (polytrope)"], 
-                    [0, 1.5, 7e8, 0.25, 1.8178813419269544e-20+0j, 0, 1.8178813419269544e-20+0j, 0, 0, 0, 1, 0, 
+                    [1.5, 7e8, 0.25, 1.8178813419269544e-8+0j, 0, 1.8178813419269544e-8+0j, 0, 0, 0, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 7e8, 0.1, 1.8178813419269544e-10+0j, 0, 1.8178813419269544e-10+0j, 0, 0, 0, 0, 0, 
+                    [3, 7e8, 1.94888854486, 1.8178813419269544e-13+0j, 0, 1.8178813419269544e-13+0j, 0, 0, 0, 0, 0, 
                      "Relativistic White Dwarf"],
                     [], 
                     [], 
@@ -884,14 +884,15 @@ def MR_relaatio(rho_min, rho_max, N_MR):
     print("rhospan: " + str(rhospan))
     R = []
     M = []
-    KAPPA = 0.05
+    # KAPPA = 1.94888854486 # REL
+    KAPPA = 6.07706649646 # NREL
     # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
     # //
     # Solve the TOV for each rho0 in the range of rhospan.
     for rho0 in rhospan:
-        r, m, p, rho = main("CUSTOM", [3, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
-                       "Relativistic White Dwarf"]) 
-        KAPPA += 0.5
+        r, m, p, rho = main("CUSTOM", [1.5, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
+                       "Not Relativistic White Dwarf"]) 
+        # KAPPA += 0.5
         # main("CUSTOM", [1.5, 6e6, 1, rho0+0j, 0, rho0+0j, 0, 0, 0, 1, 0, 
         #   "Non-relativistic White Dwarf"])
         
@@ -899,8 +900,9 @@ def MR_relaatio(rho_min, rho_max, N_MR):
         r_boundary = r[-1]
         # m_boundary = find_mass_in_radius(m, r, r_boundary)
         m_boundary = m[-1]
-        R.append(r_boundary)
-        M.append(m_boundary)
+        if m_boundary > 0:
+            R.append(r_boundary)
+            M.append(m_boundary)
     # Printtaa ja plottaa massa-säde - relaation. 
     # //
     # Print and plot the mass-radius relation.
@@ -1084,4 +1086,9 @@ def NS_MODEL():
     
 main("WD_REL")
 # 1e-18, 1e-13
-MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-10+0j, 750)
+# MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-14+0j, 500)#  3e-15 newtonilaiselle rajalle
+
+
+
+
+
