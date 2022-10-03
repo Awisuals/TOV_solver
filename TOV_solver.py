@@ -18,7 +18,7 @@ Yleisiä funktioita hyötykäyttöön. // General functions for utility use.
 """
 
 
-def graph(x, y, style, label, xlabel, ylabel, scale, title):
+def graph(x, y, style, label, xlabel, ylabel, scale, title, show=0):
     """
     Generates graph with given parameters.
 
@@ -58,7 +58,8 @@ def graph(x, y, style, label, xlabel, ylabel, scale, title):
     plt.yscale(scale)
     plt.title(title)
     plt.legend()
-    plt.show()
+    if show == 1:
+        plt.show()
 
 
 def unit_conversion(SYS, VAR, VAL, DIR):
@@ -705,7 +706,7 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
           fr'$K$ = {Kappa.real}' '\n' 
           fr'$\Gamma$ = {Gamma}',
           "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-          body + " " + "energy density as a function of radius \n")
+          body + " " + "energy density as a function of radius \n", 1)
     
     # graph(r_whole, m_whole,
     #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
