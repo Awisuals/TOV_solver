@@ -697,15 +697,15 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     graph(r_whole, unit_conversion(1, "M", m_whole, -1),
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
           body + " " + "mass as a function of radius \n")
-    # graph(r_whole, unit_conversion(2, "P", p_whole, -1),
-    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-    #       body + " " + "pressure as a function of radius \n")
-    # graph(r_whole, unit_conversion(2, "RHO", rho_whole, -1), plt.plot,
-    #       fr'$\rho_c$ = {rho_c0}' '\n'
-    #       fr'$K$ = {Kappa.real}' '\n' 
-    #       fr'$\Gamma$ = {Gamma}',
-    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-    #       body + " " + "energy density as a function of radius \n", 1)
+    graph(r_whole, unit_conversion(2, "P", p_whole, -1),
+          plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+          body + " " + "pressure as a function of radius \n")
+    graph(r_whole, unit_conversion(2, "RHO", rho_whole, -1), plt.plot,
+          fr'$\rho_c$ = {rho_c0}' '\n'
+          fr'$K$ = {Kappa.real}' '\n' 
+          fr'$\Gamma$ = {Gamma}',
+          "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+          body + " " + "energy density as a function of radius \n")
     
     # graph(r_whole, m_whole,
     #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
@@ -759,7 +759,7 @@ def main(model, args=[]):
                      "Rocky exoplanet"], 
                     [0.5, 10, 1, 7.4261e-10+0j, 0, 7.4261e-10+0j, 0, 0, 0, 0, 0, 
                      "Neutron Star (polytrope)"], 
-                    [1.5, 7e8, 0.25, 1.8178813419269544e-8+0j, 0, 1.8178813419269544e-8+0j, 0, 0, 0, 1, 0, 
+                    [1.5, 7e8, 0.25, 1.8178813419269544e-13+0j, 0, 1.8178813419269544e-13+0j, 0, 0, 0, 1, 0, 
                      "Non-relativistic White Dwarf"], 
                     [3, 7e8, 1.94888854486, 1.8178813419269544e-13+0j, 0, 1.8178813419269544e-13+0j, 0, 0, 0, 0, 0, 
                      "Relativistic White Dwarf"],
@@ -815,7 +815,7 @@ def main(model, args=[]):
     # //
     # Let's set the integration parameters.
     # Integrator adaptive, stops the integration at the star boundary.
-    rmin, rmax = 1e-3, 1000 # np.inf #100 
+    rmin, rmax = 1e-3, 100 # np.inf #100 
     N = 500
     rspan = np.linspace(rmin, rmax, N)
     
@@ -1086,8 +1086,10 @@ def NS_MODEL():
     return NS_r, NS_m, NS_p, NS_rho
     
 # main("WD_REL")
+# main("WD_NREL")
+
 # 1e-18, 1e-13
-MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 500)#  3e-15 newtonilaiselle rajalle
+MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 100)#  3e-15 newtonilaiselle rajalle
 
 
 
