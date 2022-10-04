@@ -518,7 +518,7 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
     #       "Steppi: " + str(step) + "\n")
     
     step += 1
-    # return dy
+    return dy
 
 
 # Määritellään funktio TOV-yhtälöiden ratkaisemiseksi ja koodin ajon
@@ -884,18 +884,18 @@ def MR_relaatio(rho_min, rho_max, N_MR):
     print("rhospan: " + str(rhospan))
     R = []
     M = []
-    # KAPPA = 1.94888854486 # REL
-    KAPPA = 6.07706649646 # NREL
+    KAPPA = 1.94888854486 # REL
+    # KAPPA = 6.07706649646 # NREL
     # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
     # //
     # Solve the TOV for each rho0 in the range of rhospan.
     for rho0 in rhospan:
-        r, m, p, rho = main("CUSTOM", [1.5, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
-                       "Not Relativistic White Dwarf"]) 
+        # r, m, p, rho = main("CUSTOM", [1.5, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
+        #                "Not Relativistic White Dwarf"]) 
         # KAPPA += 0.5
         
-        # r, m, p, rho = main("CUSTOM", [3, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
-        #                 "Relativistic White Dwarf"]) 
+        r, m, p, rho = main("CUSTOM", [3, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
+                        "Relativistic White Dwarf"]) 
 
         # r_boundary = find_radius(p, r, raja=0.05)
         r_boundary = r[-1]
@@ -1085,9 +1085,9 @@ def NS_MODEL():
             
     return NS_r, NS_m, NS_p, NS_rho
     
-main("WD_REL")
+# main("WD_REL")
 # 1e-18, 1e-13
-# MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 500)#  3e-15 newtonilaiselle rajalle
+MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 500)#  3e-15 newtonilaiselle rajalle
 
 
 
