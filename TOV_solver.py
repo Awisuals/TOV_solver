@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.interpolate import interp1d
 step = 0
-# from decimal import *
 """
 
 Yleisiä funktioita hyötykäyttöön. // General functions for utility use.
@@ -18,7 +17,7 @@ Yleisiä funktioita hyötykäyttöön. // General functions for utility use.
 """
 
 
-def graph(x, y, style, label, xlabel, ylabel, scale, title, show=0):
+def graph(x, y, style, label, xlabel, ylabel, scale, title, new=0, show=0):
     """
     Generates graph with given parameters.
 
@@ -46,9 +45,10 @@ def graph(x, y, style, label, xlabel, ylabel, scale, title, show=0):
     None.
 
     """
-    plt.figure()
+    if new == 1:
+        plt.figure()
+
     style(x, y, label=label)
-    
     # Piirtää suoran y = 0. // Draws horizontal line y = 0.
     plt.axhline(y=0, color='r', linestyle='--')
     
@@ -312,7 +312,7 @@ def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
         p = p0
     m = 4./3.*np.pi*rho*rmin**3
     # m = 0
-    print("m, p, rho: " + str(m) + str(p) + str(rho))
+    # print("m, p, rho: " + str(m) + str(p) + str(rho))
     return m, p, rho
 
 
@@ -518,7 +518,7 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
     #       "Steppi: " + str(step) + "\n")
     
     step += 1
-    return dy
+    # return dy
 
 
 # Määritellään funktio TOV-yhtälöiden ratkaisemiseksi ja koodin ajon
@@ -531,7 +531,7 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
 def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
               rho_c=0, p_c=0, a=0, rho_func=0, p_func=0, interpolation=0, body=""):
     """
-    Appropriate initial values ​​and equations are chosen. Solves TOV equations
+    Appropriate initial values and equations are chosen. Solves TOV equations
     in this case for the corresponding astrophysical body. As a solution
     the mass, pressure, energy density and radius of an astrophysical body 
     are obtained.
@@ -623,23 +623,22 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     print("a = "            + str(a))
     print("rho_func = "     + str(rho_func))
     print("p_func = "       + str(p_func))
-    print("interpolate = "  + str(interpolation))
-    print("body = "         + body + "\n")
+    print("interpolate = "  + str(interpolation) + "\n \n")
     
     Gamma = gamma_from_n(n)
     Kappa = kappa_choiser(kappa_choise, p_K, rho_K, Gamma, R_body, n)
-    # Kappa = 
-
-    
-    print("Gamman ja Kappan arvot. \n " + "Gamma: " + str(Gamma) + 
-          "\n Kappa: " + str(Kappa) + "\n")
     
     m, p, rho = set_initial_conditions(rs, Gamma, Kappa, rho_c, p_c, a)
     y0 = m, p, rho
     
-    print("Tulostetaan alkuarvot. \n Kappa ja Gamma:" + str(Kappa) +
-          " ja " + str(Gamma) + "\n Asetetut alkuarvot (m, p ja rho):"
-          + str(y0[0]) + ", " + str(y0[1]) + ", " + str(rho) + "\n \n")
+    print("Tulostetaan polytrooppivakiot:" 
+          + "\n Kappa: " + str(Kappa)
+          + "\n Gamma: " + str(Gamma) + "\n \n")
+          
+    print("Asetetut alkuarvot (m, p ja rho):"
+          + "\n m: " + str(y0[0]) 
+          + "\n p: " + str(y0[1]) 
+          + "\n rho: " + str(rho) + "\n \n")
     
     # Ratkaistaan TOV annetuilla parametreilla 
     # // 
@@ -698,15 +697,15 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     graph(r_whole, unit_conversion(1, "M", m_whole, -1),
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
           body + " " + "mass as a function of radius \n")
-    graph(r_whole, unit_conversion(2, "P", p_whole, -1),
-          plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-          body + " " + "pressure as a function of radius \n")
-    graph(r_whole, unit_conversion(2, "RHO", rho_whole, -1), plt.plot,
-          fr'$\rho_c$ = {rho_c0}' '\n'
-          fr'$K$ = {Kappa.real}' '\n' 
-          fr'$\Gamma$ = {Gamma}',
-          "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-          body + " " + "energy density as a function of radius \n", 1)
+    # graph(r_whole, unit_conversion(2, "P", p_whole, -1),
+    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+    #       body + " " + "pressure as a function of radius \n")
+    # graph(r_whole, unit_conversion(2, "RHO", rho_whole, -1), plt.plot,
+    #       fr'$\rho_c$ = {rho_c0}' '\n'
+    #       fr'$K$ = {Kappa.real}' '\n' 
+    #       fr'$\Gamma$ = {Gamma}',
+    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+    #       body + " " + "energy density as a function of radius \n", 1)
     
     # graph(r_whole, m_whole,
     #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
@@ -894,9 +893,10 @@ def MR_relaatio(rho_min, rho_max, N_MR):
         r, m, p, rho = main("CUSTOM", [1.5, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
                        "Not Relativistic White Dwarf"]) 
         # KAPPA += 0.5
-        # main("CUSTOM", [1.5, 6e6, 1, rho0+0j, 0, rho0+0j, 0, 0, 0, 1, 0, 
-        #   "Non-relativistic White Dwarf"])
         
+        # r, m, p, rho = main("CUSTOM", [3, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
+        #                 "Relativistic White Dwarf"]) 
+
         # r_boundary = find_radius(p, r, raja=0.05)
         r_boundary = r[-1]
         # m_boundary = find_mass_in_radius(m, r, r_boundary)
@@ -913,9 +913,9 @@ def MR_relaatio(rho_min, rho_max, N_MR):
     M = np.array(M)
 
     graph(R, unit_conversion(1, "M", M, -1), plt.scatter, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde")
-    graph(R, unit_conversion(1, "M", M, -1)/2e30, plt.plot, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde")
+          "Massa", 'linear', "Massa-säde", 1, 1)
+    graph(R, unit_conversion(1, "M", M, -1), plt.plot, "Massa-säde - relaatio", "Säde",
+          "Massa", 'linear', "Massa-säde", 1, 1)
     return R, M
 
 # Rakennetaan neutronitähden malli paperista "A unified equation
@@ -1087,8 +1087,7 @@ def NS_MODEL():
     
 main("WD_REL")
 # 1e-18, 1e-13
-# MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-14+0j, 500)#  3e-15 newtonilaiselle rajalle
-
+# MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 500)#  3e-15 newtonilaiselle rajalle
 
 
 
