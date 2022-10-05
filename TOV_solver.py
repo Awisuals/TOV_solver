@@ -9,7 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.interpolate import interp1d
-step = 0
+import scipy.constants as sc
+import natpy as nat
 """
 
 Yleisiä funktioita hyötykäyttöön. // General functions for utility use.
@@ -419,7 +420,18 @@ def EoS_p2r(p, Gamma, Kappa):
     return rho
 
 
-def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
+def EoS_degelgas(rho):
+    m_e = nat.convert(sc.electron_mass * nat.kg, nat.keV).value
+    mu_e = 2
+    m_mu = 
+    a = (m_e**4)/(24*np.pi**2)
+    b = ((3*np.pi**2)/(mu_e*m_mu*m_e**3))**(1/3)
+    y = lambda z : b*z**(1/3)
+    f = lambda x : x*(2*x**2-3)*(x**2+1)**(1/2)+3*np.log(x+(1+x**2)**(1/2))
+    return a*f(y(rho))
+
+
+def EoS_choiser(choise, interpolation, Gamma, Kappa, p=0, rho=0):
     """
     Chooses wanted EoS for DE-group as rho and returns it
     with given parameters.
@@ -428,7 +440,7 @@ def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
     ----------
     choise : Int
         Chooses between defined EoS to return.
-        Can be 0 or 1.
+        Can be 0, 1 or 2.
     interpolation : args
     p : args
     Gamma : argsz
@@ -436,46 +448,79 @@ def EoS_choiser(choise, interpolation, p, Gamma, Kappa):
 
     Returns
     -------
-    rho : Float, Array
+    returnable : Float, Array
         Energy density with calculated with wanted EoS and given params.
 
     """
     if choise == 0:
-        rho = EoS_p2r(p, Gamma, Kappa)
-    elif choise == 1:
-        rho = EoS_cd_p2rho(interpolation, p)
-    return rho
+        returnable = EoS_p2r(p, Gamma, Kappa) # Energy density
+    if choise == 1:
+        returnable = EoS_cd_p2rho(interpolation, p) # Energy density
+    if choise == 2:
+        returnable = EoS_degelgas(rho) # Pressure
+    return returnable
 
 
-def pressure_choiser(choise, m, p, rho, r):
-    if choise == 0:
-        dpdr = -(rho+p)*(m + 4*np.pi*r**3*p)/(r*(r-2*m))
-        # p = - ((m*rho)/(r**2))*(1+(p)/(rho))*(1+(4*np.pi*r**3*p)/(m))*(1-(2*m)/(r))**(-1)
-    elif choise == 1:
-        dpdr = -(m*rho)/(r**2)
-    return dpdr
+def TOV_choiser(choise, m, p, rho, r):
+    """_summary_
 
+    Parameters
+    ----------
+    choise : _type_
+        _description_
+    m : _type_
+        _description_
+    p : _type_
+        _description_
+    rho : _type_
+        _description_
+    r : _type_
+        _description_
 
-def TOV_rho(r, y, K, G, interpolation, rho_func, p_func):
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    G = sc.gravitational_constant
+    m_e = nat.convert(sc.electron_mass * nat.kg, nat.keV).value
+    mu_e = 2
+    m_mu = 
+    a = (m_e**4)/(24*np.pi**2)
+    b = ((3*np.pi**2)/(mu_e*m_mu*m_e**3))**(1/3)
     
+
+    if choise == 0:
+        tov = -(rho+p)*(m + 4*np.pi*r**3*p)/(r*(r-2*m)) # dpdr
+    if choise == 1:
+        tov = -(m*rho)/(r**2) # dpdr
+    if choise == 2:
+        tov = -(((G*m*rho)/(r**2))(1+p/rho)(1+(4*np.pi*r**3*p)/(m))(1-(2*G*m)/(r))**(-1)((8*a*b**5*rho**(2/3))/(3*(b**2*rho**(2/3)+1)**(1/2)))**(-1)) # drhodr
+    return tov
+
+
+def TOV_rho(r, y, K, G, interpolation, eos_choise, tov_choise):
+    
+    # HUOM! Tänne alkuarvaukset luonnollisissa yksiköissä
+
     # Asetetaan muuttujat taulukkoon
     # Paine valitaan valitsin-funktiossa.
     # //
     # Let's set the variables in the table. 
     # The energy density is selected in the selector function.
-    m = y[0]
-    rho = y[1]
-    p = EoS_r2p(rho, G, K)
+    m = y[0].real + 0j
+    rho = y[1].real +0j
+    p = EoS_choiser(eos_choise, interpolation, G, K, rho=rho).real + 0j
     
     # Ratkaistavat yhtälöt // Equations to be solved
     dy = np.empty_like(y)
     # Massa ja Energiatiheys DY // Mass and energy density DE
-    dy[0] = 4*np.pi*rho*r**2                                            # dmdr
-    dy[1] = -(rho+p)*(m + 4*np.pi*r**3*p)*(K*G*rho**(G-1))/(r*(r-2*m))  # drhodr
+    dy[0] = 4*np.pi*rho*r**2                       # dmdr
+    dy[1] = TOV_choiser(tov_choise, m ,p, rho, r)  # drhodr
     return dy
 
 
-def TOV(r, y, K, G, interpolation, rho_func, p_func):
+def TOV_p(r, y, K, G, interpolation, eos_choise, tov_choise):
     """
     Let's define the TOV equations and return them in an array.
 
@@ -492,7 +537,6 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
         Integroitavat funktiot.
 
     """
-    global step
     # Asetetaan muuttujat taulukkoon
     # Energiatiheys valitaan valitsin-funktiossa.
     # //
@@ -500,24 +544,13 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
     # The energy density is selected in the selector function.
     m = y[0].real + 0j                            
     p = y[1].real + 0j
-    rho = EoS_choiser(rho_func, interpolation, p, G, K).real + 0j
-
-    # print("Massa: " + str(m.real) + "\n" + 
-    #       "Paine: " + str(p.real) + "\n" + 
-    #       "Energiatiheys: " + str(rho.real) + "\n" + 
-    #       "Säde: " + str(r) + "\n")
+    rho = EoS_choiser(eos_choise, interpolation, G, K, p=p).real + 0j
 
     # Ratkaistavat yhtälöt // The equations to be solved
     dy = np.empty_like(y)
     # Massa ja paine // Mass and pressure
     dy[0] = 4*np.pi*rho*r**2                        # dmdr
-    dy[1] = pressure_choiser(p_func, m, p, rho, r)  # dpdr
-    
-    # print("Massan derivaatta: " + str(dy[0].real) + "\n" + 
-    #       "Paineen derivaatta: " + str(dy[1].real) + "\n" +
-    #       "Steppi: " + str(step) + "\n")
-    
-    step += 1
+    dy[1] = TOV_choiser(tov_choise, m, p, rho, r)  # dpdr
     return dy
 
 
@@ -528,8 +561,8 @@ def TOV(r, y, K, G, interpolation, rho_func, p_func):
 # Let's define a function to solve the TOV equations and to help run the code
 # easier. The function is given a bunch of parameters and it solves
 # previously defined equations.
-def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
-              rho_c=0, p_c=0, a=0, rho_func=0, p_func=0, interpolation=0, body=""):
+def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
+              rho_c=0, p_c=0, a=0, eos_choise=0, tov_choise=0, interpolation=0, body=""):
     """
     Appropriate initial values and equations are chosen. Solves TOV equations
     in this case for the corresponding astrophysical body. As a solution
@@ -601,29 +634,23 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     """
     rs, rf = ir[0], ir[1]
     
-    # Alustetaan ratkaisuille taulukot
-    r_sol = []
-    m_sol = []
-    p_sol = []
-    rho_sol = []
-    
     # Asetetaan alkuarvot // Set initial values
     
     # Tulostetaan annetut parametrit // Print given params
-    print("Model of your choise and semi-realistic params for it: \n")
-    print("Integration range = " + str(ir))
-    print("Model = "        + body)
-    print("n = "            + str(n))
-    print("R_body = "       + str(R_body))
-    print("kappa_choise = " + str(kappa_choise))
-    print("rho_K = "        + str(rho_K))
-    print("p_K = "          + str(p_K))
-    print("rho_c = "        + str(rho_c))
-    print("p_c = "          + str(p_c))
-    print("a = "            + str(a))
-    print("rho_func = "     + str(rho_func))
-    print("p_func = "       + str(p_func))
-    print("interpolate = "  + str(interpolation) + "\n \n")
+    print("\n Model of your choise and semi-realistic params for it:" + 
+    "\n Integration range = " + str(ir) +
+    "\n Model = "        + body +
+    "\n n = "            + str(n) +
+    "\n R_body = "       + str(R_body) +
+    "\n kappa_choise = " + str(kappa_choise) +
+    "\n rho_K = "        + str(rho_K) +
+    "\n p_K = "          + str(p_K) +
+    "\n rho_c = "        + str(rho_c) +
+    "\n p_c = "          + str(p_c) +
+    "\n a = "            + str(a) +
+    "\n eos_choise = "     + str(eos_choise) +
+    "\n tov_choise = "       + str(tov_choise) +
+    "\n interpolate = "  + str(interpolation) + "\n \n")
     
     Gamma = gamma_from_n(n)
     Kappa = kappa_choiser(kappa_choise, p_K, rho_K, Gamma, R_body, n)
@@ -647,19 +674,16 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     #                  dense_output=True, events=found_radius,
     #                  args=(Kappa, Gamma, interpolation, rho_func, p_func))
 
-    soln = solve_ivp(TOV, (rs, rf), (m.real, p.real), method='Radau', first_step=1e-6,
-                      dense_output=True, events=found_radius, # max_step=1e-3,
-                     args=(Kappa, Gamma, interpolation, rho_func, p_func))
+    soln = solve_ivp(TOV_p, (rs, rf), (m.real, p.real), method='Radau',
+    first_step=1e-6, dense_output=True, events=found_radius, 
+    args=(Kappa, Gamma, interpolation, eos_choise, tov_choise))
     
-    print("Solverin parametreja:")
+    print("\n Solverin parametreja:")
     print(soln.nfev, 'evaluations required')
     print(soln.t_events)
     print(soln.y_events)
-    print("\n \n")
-        
-    # solution = soln.sol
-    # print("Solutions: \n*2" + str(solution))
-    
+    print("\n")
+
     # TOV ratkaisut // TOV solutions
     # Ratkaisut yksiköissä // Solutions in units:
     # [m] = kg, [p] = m**-2 ja [rho] = m**-2
@@ -668,25 +692,11 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     p = soln.y[1].real
     rho = EoS_p2r(p, Gamma, Kappa)
 
-    r0_1, rf_1 = r[-1], np.inf
-    soln1 = solve_ivp(TOV, (r0_1, rf_1), (m[-1].real, p[-1].real), method='Radau', first_step=1e-6,
-                      dense_output=True, events=found_radius, # max_step=1e-3,
-                     args=(Kappa, Gamma, interpolation, rho_func, p_func))
-
-    r1 = soln1.t
-    m1 = soln1.y[0].real
-    p1 = soln1.y[1].real
-    rho1 = EoS_p2r(p1, Gamma, Kappa)
-    
-    r_whole = np.append(r, r1)
-    m_whole = np.append(m, m1)
-    p_whole = np.append(p, p1)
-    rho_whole = np.append(rho, rho1)
-    
     print("Saadut TOV ratkaisut ([m] = kg, [p] = m**-2 ja [rho] = m**-2): \n")
-    print("Säde: \n \n" + str(r_whole.real) + "\n \n Massa: \n \n" + str(m_whole.real) +
-          "\n \n Paine: \n \n" + str(p_whole.real) + "\n \n Energiatiheys: \n \n" + str(rho_whole.real))
-    print("\n \n")
+    print("Säde: \n \n" + str(r.real) + 
+    "\n \n Massa: \n \n" + str(m.real) + 
+    "\n \n Paine: \n \n" + str(p.real) + 
+    "\n \n Energiatiheys: \n \n" + str(rho.real) + "\n \n")
 
     rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
     
@@ -694,36 +704,24 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     # # # //
     # # # Let's plot the model of the solution on graphs in units:
     # # # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
-    graph(r_whole, unit_conversion(1, "M", m_whole, -1),
+    graph(r, unit_conversion(1, "M", m, -1),
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
-          body + " " + "mass as a function of radius \n")
-    graph(r_whole, unit_conversion(2, "P", p_whole, -1),
+          body + " " + "mass as a function of radius \n", 1)
+    graph(r, unit_conversion(2, "P", p, -1),
           plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-          body + " " + "pressure as a function of radius \n")
-    graph(r_whole, unit_conversion(2, "RHO", rho_whole, -1), plt.plot,
+          body + " " + "pressure as a function of radius \n", 1)
+    graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
           fr'$\rho_c$ = {rho_c0}' '\n'
           fr'$K$ = {Kappa.real}' '\n' 
           fr'$\Gamma$ = {Gamma}',
           "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-          body + " " + "energy density as a function of radius \n")
+          body + " " + "energy density as a function of radius \n", 1, 1)
     
-    # graph(r_whole, m_whole,
-    #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
-    #       body + " " + "mass as a function of radius \n")
-    # graph(r_whole, p_whole,
-    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-    #       body + " " + "pressure as a function of radius \n")
-    # graph(r_whole, rho_whole, plt.plot,
-    #       fr'$\rho_c$ = {rho_c0}' '\n'
-    #       fr'$K$ = {Kappa.real}' '\n' 
-    #       fr'$\Gamma$ = {Gamma}',
-    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-    #       body + " " + "energy density as a function of radius \n")
+    print("Tähden säde: \n" + str(r[-1]) + 
+          "\n Tähden massa: \n" + str(m[-1]) + 
+          "\n \n")
     
-    print("Tähden säde: \n" + str(r_whole[-1]) + 
-          "\n Tähden massa: \n" + str(m_whole[-1]))
-    
-    return r_whole.real, m_whole.real, p_whole.real, rho_whole.real
+    return r.real, m.real, p.real, rho.real
 
 
 def found_radius(t, y, d1, d2, d3, d4, d5):
@@ -815,7 +813,7 @@ def main(model, args=[]):
     # //
     # Let's set the integration parameters.
     # Integrator adaptive, stops the integration at the star boundary.
-    rmin, rmax = 1e-3, 100 # np.inf #100 
+    rmin, rmax = 1e-3, np.inf
     N = 500
     rspan = np.linspace(rmin, rmax, N)
     
@@ -829,7 +827,7 @@ def main(model, args=[]):
     found_radius.terminal = True
     found_radius.direction = -1    
     
-    r_sol, m_sol, p_sol, rho_sol = SOLVE_TOV([r0, rf], n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
+    r_sol, m_sol, p_sol, rho_sol = TOV_solver([r0, rf], n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
                              a, rho_func, p_func, interpolation, body)
     
     return r_sol, m_sol, p_sol, rho_sol
@@ -1085,11 +1083,11 @@ def NS_MODEL():
             
     return NS_r, NS_m, NS_p, NS_rho
     
-# main("WD_REL")
+main("WD_REL")
 # main("WD_NREL")
 
 # 1e-18, 1e-13
-MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 100)#  3e-15 newtonilaiselle rajalle
+# MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 100)#  3e-15 newtonilaiselle rajalle
 
 
 
