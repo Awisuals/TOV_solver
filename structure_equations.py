@@ -101,7 +101,7 @@ def EoS_degelgas(rho):
     return a*f(y(rho))
 
 
-def EoS_choiser(choise, interpolation, Gamma, Kappa, p=0, rho=0):
+def EoS_choiser(choise, interpolation=0., Gamma=0., Kappa=0., p=0., rho=0.):
     """
     Chooses wanted EoS for DE-group as rho and returns it
     with given parameters.
@@ -125,13 +125,13 @@ def EoS_choiser(choise, interpolation, Gamma, Kappa, p=0, rho=0):
     if choise == 0:
         returnable = EoS_p2r(p, Gamma, Kappa) # Energy density
     if choise == 1:
-        returnable = EoS_cd_p2rho(interpolation, p) # Energy density
+        returnable = interpolation # EoS_cd_p2rho(interpolation, p) # Energy density # TODO add interpolate functions and params
     if choise == 2:
         returnable = EoS_degelgas(rho) # Pressure
     return returnable
 
 
-def TOV_choiser(choise, m, p, rho, r):
+def TOV_choiser(choise, m=0., p=0., rho=0., r=0.):
     """_summary_
 
     Parameters
@@ -165,8 +165,6 @@ def TOV_choiser(choise, m, p, rho, r):
     if choise == 1:
         tov = -(m*rho)/(r**2) # dpdr
     if choise == 2:
-        tov = -(((G*m*rho)/(r**2))(1+p/rho)(1+(4*np.pi*r**3*p)/(m))(1-(2*G*m)/(r))**(-1)((8*a*b**5*rho**(2/3))/(3*(b**2*rho**(2/3)+1)**(1/2)))**(-1)) # drhodr
+        tov = -(((G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*((8*a*b**5*rho**(2/3))/(3*(b**2*rho**(2/3)+1)**(1/2)))**(-1)) # drhodr
     return tov
-
-
 

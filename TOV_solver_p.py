@@ -103,7 +103,7 @@ def TOV_p(r, y, K, G, interpolation, eos_choise, tov_choise):
     m = y[0].real + 0j                            
     p = y[1].real + 0j
     rho = EoS_choiser(eos_choise, interpolation, G, K, p=p).real + 0j
-
+    print("Here we are! r: " + str(r) + str(p))
     # Ratkaistavat yhtälöt // The equations to be solved
     dy = np.empty_like(y)
     # Massa ja paine // Mass and pressure
@@ -233,7 +233,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     #                  args=(Kappa, Gamma, interpolation, rho_func, p_func))
 
     soln = solve_ivp(TOV_p, (rs, rf), (m.real, p.real), method='Radau',
-    first_step=1e-6, dense_output=True, events=found_radius, 
+    first_step=1e-6, dense_output=True, events=found_radius, # max_step=1,
     args=(Kappa, Gamma, interpolation, eos_choise, tov_choise))
     
     print("\n Solverin parametreja:")
@@ -262,13 +262,13 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     # # # //
     # # # Let's plot the model of the solution on graphs in units:
     # # # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
-    graph(r, unit_conversion(1, "M", m, -1),
+    graph(r/1000, unit_conversion(1, "M", m, -1),
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
           body + " " + "mass as a function of radius \n", 1)
-    graph(r, unit_conversion(2, "P", p, -1),
+    graph(r/1000, unit_conversion(2, "P", p, -1),
           plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
           body + " " + "pressure as a function of radius \n", 1)
-    graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
+    graph(r/1000, unit_conversion(2, "RHO", rho, -1), plt.plot,
           fr'$\rho_c$ = {rho_c0}' '\n'
           fr'$K$ = {Kappa.real}' '\n' 
           fr'$\Gamma$ = {Gamma}',
@@ -317,7 +317,7 @@ def main(model, args=[]):
                      "Neutron Star (polytrope)"], 
                     [1.5, 7e8, 0.25, 1.8178813419269544e-13+0j, 0, 1.8178813419269544e-13+0j, 0, 0, 0, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 7e8, 1.94888854486, 1.8178813419269544e-13+0j, 0, 1.8178813419269544e-13+0j, 0, 0, 0, 0, 0, 
+                    [3, 7e8, 1.94888854486, 1.8178813419269544e-21+0j, 0, 1.8178813419269544e-21+0j, 0, 0, 0, 0, 0, 
                      "Relativistic White Dwarf"],
                     [], 
                     [], 

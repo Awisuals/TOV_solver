@@ -172,8 +172,10 @@ def kappa_from_p0rho0(p0, rho0, G):
         Constant of proportionality.
 
     """
-    k = (p0)/(rho0**G)
-    if k == 0:
+    k=0
+    if G != 0 and rho0 != 0:
+        k = (p0)/(rho0**G)
+    elif k == 0:
         k += 1e-6
     return k
 
@@ -279,3 +281,31 @@ def Ricci_scalar(p, rho, r):
     graph(r, unit_conversion(3, "P", R_scalar, -1)*1e-9, plt.plot,
           "Scalar curvature", "Radius, r", "Ricci scalar, R (eV)", 
           'linear', "Scalar curvature inside neutron star \n")
+    
+    
+def Ricci_scalar(p, rho, r):
+    """
+    Compute the curvature scalar of space - the Ricci scalar
+    and plots it. 
+    Params must be in geometrizied units:
+        [p] = m**-2 ja [rho] = m**-2
+    Plots in GeVs.
+
+    Parameters
+    ----------
+    p : Array
+        Pressure solution.
+    rho : Array
+        Energy density solution.
+
+    Returns
+    -------
+    None.
+
+    """
+    R_scalar = -8*np.pi*(rho - 3*p)
+    graph(r, unit_conversion(3, "P", R_scalar, -1)*1e-9, plt.plot,
+          "Scalar curvature", "Radius, r", "Ricci scalar, R (eV)", 
+          'linear', "Scalar curvature inside neutron star \n")
+
+

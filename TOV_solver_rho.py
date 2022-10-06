@@ -4,6 +4,77 @@ Created on Wed Oct  5  2022
 
 @author: Antero
 """
+from scipy.integrate import solve_ivp
+import numpy as np
+import matplotlib.pyplot as plt
+
+from functions import *
+from structure_equations import *
+"""
+Write DE-group as:
+    EoS -> pressure
+    TOV -> Energy density
+And solve it.
+"""
+
+def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
+    """
+    Utility routine to set initial data. Can be given either
+    pressure or energy density at core. Value a tells
+    which is first.
+
+    Parameters
+    ----------
+    rmin : Float
+        Lower limit for integration.
+    G : Float
+        Polytrope constant power.
+    K : Float
+        Polytrope constant of proportionality.
+    rho0 : Float, optional
+        Given energy density at core. The default is 0.
+    p0 : Float, optional
+        Given pressure at core. The default is 0.
+    a : Int, optional
+        Choice for given initial value. Another is then 0 and
+        calculated from EoS. Can take both also.
+
+        Choice:
+            a = 0 is for given rho0.
+            a = 1 is for given p0.
+            a = 2 is for given rho0 and p0.
+
+        The default is 0.
+
+    Returns
+    -------
+    m : Float
+        Mass inside radius rmin.
+    p : Float
+        pressure at r ~ 0.
+    rho : Float
+        Energy density at r ~ 0.
+
+    """
+    rho_values0 = [rho0, EoS_choiser(0, p=p0, Gamma=G, Kappa=K), rho0, rho0]
+    p_values0 = [EoS_choiser(1, rho=rho0, Gamma=G, Kappa=K), p0, p0, EoS_choiser(2, rho=rho0)]
+    if a == 0:
+        rho = rho_values0[a]
+        p = p_values0[a]
+    if a == 1:
+        p = p_values0[a]
+        rho = rho_values0[a]
+    if a == 2:
+        rho = rho0
+        p = p0
+    if a == 3:
+        rho = rho_values0[a]
+        p = p_values0[a]
+    m = 4./3.*np.pi*rho*rmin**3
+    # m = 0
+    # print("m, p, rho: " + str(m) + str(p) + str(rho))
+    return m, p, rho
+
 
 def TOV_rho(r, y, K, G, interpolation, eos_choise, tov_choise):
     
@@ -15,8 +86,8 @@ def TOV_rho(r, y, K, G, interpolation, eos_choise, tov_choise):
     # Let's set the variables in the table. 
     # The energy density is selected in the selector function.
     m = y[0].real + 0j
-    rho = y[1].real +0j
-    p = EoS_choiser(eos_choise, interpolation, G, K, rho=rho).real + 0j
+    rho = y[1].real + 0j
+    p = EoS_choiser(eos_choise, interpolation, G, K, 0, rho).real + 0j
     
     # Ratkaistavat yhtälöt // Equations to be solved
     dy = np.empty_like(y)
@@ -75,13 +146,13 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
             a = 1 is for given p0.
             a = 2 is for given rho0 and p0.
         The default is 0..
-    rho_func : Int, optional
+    EoS_choise : Int, optional
         Choise for what EoS is used to compute energy density.
         Choise:
             0=Polytrope EoS.
             1=Interpolated EoS from data.
         The default is 0..
-    p_func : int, optional
+    TOV_choise : int, optional
         Choise for either newtonian or relativistic pressure.:
             0=TOV
             1=NEWT
@@ -145,7 +216,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     #                  dense_output=True, events=found_radius,
     #                  args=(Kappa, Gamma, interpolation, rho_func, p_func))
 
-    soln = solve_ivp(TOV_p, (rs, rf), (m.real, p.real), method='Radau',
+    soln = solve_ivp(TOV_rho, (rs, rf), (m.real, rho.real), method='Radau',
     first_step=1e-6, dense_output=True, events=found_radius, 
     args=(Kappa, Gamma, interpolation, eos_choise, tov_choise))
     
@@ -160,36 +231,151 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     # [m] = kg, [p] = m**-2 ja [rho] = m**-2
     r = soln.t
     m = soln.y[0].real
-    p = soln.y[1].real
-    rho = EoS_p2r(p, Gamma, Kappa)
+    rho = soln.y[1].real
+    p = EoS_choiser(2, rho=rho)
 
-    print("Saadut TOV ratkaisut ([m] = kg, [p] = m**-2 ja [rho] = m**-2): \n")
+    print("Saadut TOV ratkaisut ([m] = eV, [p] = eV^4 ja [rho] = eV^4): \n")
     print("Säde: \n \n" + str(r.real) + 
     "\n \n Massa: \n \n" + str(m.real) + 
-    "\n \n Paine: \n \n" + str(p.real) + 
-    "\n \n Energiatiheys: \n \n" + str(rho.real) + "\n \n")
+    "\n \n Energiatiheys: \n \n" + str(p.real) + 
+    "\n \n Paine : \n \n" + str(rho.real) + "\n \n")
 
-    rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
+    # rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
     
     # # # Piirretään ratkaisun malli kuvaajiin yksiköissä:
     # # # //
     # # # Let's plot the model of the solution on graphs in units:
     # # # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
-    graph(r, unit_conversion(1, "M", m, -1),
+    # graph(r, unit_conversion(1, "M", m, -1),
+    #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
+    #       body + " " + "mass as a function of radius \n", 1)
+    # graph(r, unit_conversion(2, "P", p, -1),
+    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+    #       body + " " + "pressure as a function of radius \n", 1)
+    # graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
+    #       fr'$\rho_c$ = {rho_c0}' '\n'
+    #       fr'$K$ = {Kappa.real}' '\n' 
+    #       fr'$\Gamma$ = {Gamma}',
+    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+    #       body + " " + "energy density as a function of radius \n", 1, 1)
+    
+    graph(r, m,
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
           body + " " + "mass as a function of radius \n", 1)
-    graph(r, unit_conversion(2, "P", p, -1),
+    graph(r, p,
           plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
           body + " " + "pressure as a function of radius \n", 1)
-    graph(r, unit_conversion(2, "RHO", rho, -1), plt.plot,
-          fr'$\rho_c$ = {rho_c0}' '\n'
+    graph(r, rho, plt.plot,
+          fr'$\rho_c$ = {rho_c}' '\n'
           fr'$K$ = {Kappa.real}' '\n' 
           fr'$\Gamma$ = {Gamma}',
           "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
           body + " " + "energy density as a function of radius \n", 1, 1)
+    
     
     print("Tähden säde: \n" + str(r[-1]) + 
           "\n Tähden massa: \n" + str(m[-1]) + 
           "\n \n")
     
     return r.real, m.real, p.real, rho.real
+
+
+def found_radius(t, y, d1, d2, d3, d4, d5):
+    """
+    Event function: Zero of pressure
+    ODE integration stops when this function returns True
+
+    Parameters
+    ----------
+    t : TYPE
+        DESCRIPTION.
+    y : TYPE
+        DESCRIPTION.
+    d1, d2, d3, d4 : args
+        Dummy params.
+
+    Returns
+    -------
+    None
+        Checks when energy density reaches zero.
+
+    """
+    d1, d2, d3, d4, d5 = d1, d2, d3, d4, d5
+    return y[1].real
+
+
+def main(model, args=[]):
+    
+    model_choise = ["WD_NREL", "WD_REL"]
+    model_params = [[1.5, 0, 0, 0, 0, 1e22+0j, 0, 3, 2, 1, 0, 
+                     "Non-relativistic White Dwarf"], 
+                    [3, 0, 0, 0, 0, 1e22+0j, 0, 3, 2, 2, 0, 
+                     "Relativistic White Dwarf"]]
+    
+    if model == "CUSTOM":
+        n               =args[0]
+        R_body          =args[1]
+        kappa_choise    =args[2]
+        rho_K           =args[3]
+        p_K             =args[4]
+        rho_c           =args[5]
+        p_c             =args[6]
+        a               =args[7]
+        rho_func        =args[8]
+        p_func          =args[9]
+        interpolation   =args[10]
+        body            =args[11]
+    else:
+        for i, m in enumerate(model_choise):
+            if m == model:
+                print(m)
+                print(i)
+                n               =model_params[i][0]
+                R_body          =model_params[i][1] 
+                kappa_choise    =model_params[i][2]
+                rho_K           =model_params[i][3]
+                p_K             =model_params[i][4]
+                rho_c           =model_params[i][5]
+                p_c             =model_params[i][6]
+                a               =model_params[i][7]
+                rho_func        =model_params[i][8]
+                p_func          =model_params[i][9]
+                interpolation   =model_params[i][10]
+                body            =model_params[i][11]
+    
+    # Määrätään vakioita.
+    # //
+    # Determine constants.
+    M_sun = 2e30              # kg
+    R_WD0 = 7e8               # m
+    
+    # Geometrisoidut yksiköt (Luonnollisia yksiköitä) 
+    # // 
+    # Geometrizied units (Natural units)
+    c = 1
+    G = 1
+    
+    # Asetetaan integrointiparametrit.
+    # Integraattori adaptiivinen, lopettaa integroinnin tähden rajalla.
+    # //
+    # Let's set the integration parameters.
+    # Integrator adaptive, stops the integration at the star boundary.
+    rmin, rmax = 5100, np.inf # 1e-3m
+    N = 500
+    rspan = np.linspace(rmin, rmax, N)
+    
+    # Initiaalirajat säteelle. // Initial limits for the radius.
+    r0, rf = rmin, rmax
+    
+    # Ode-ratkaisijan lopettaminen ehdon täyttyessä.
+    # //
+    # Termination of ode solver when met with condition.
+    found_radius.terminal = True
+    found_radius.direction = -1    
+    
+    r_sol, m_sol, p_sol, rho_sol = TOV_solver([r0, rf], n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
+                             a, rho_func, p_func, interpolation, body)
+    
+    return r_sol, m_sol, p_sol, rho_sol
+
+main("WD_REL")
