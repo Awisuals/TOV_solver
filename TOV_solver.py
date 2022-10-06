@@ -50,7 +50,7 @@ def graph(x, y, style, label, xlabel, ylabel, scale, title):
     style(x, y, label=label)
     
     # Piirtää suoran y = 0. // Draws horizontal line y = 0.
-    # plt.axhline(y=0, color='r', linestyle='--')
+    plt.axhline(y=0, color='r', linestyle='--')
     
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -707,18 +707,18 @@ def SOLVE_TOV(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
     #       body + " " + "energy density as a function of radius \n")
     
-    # graph(r_whole, m_whole,
-    #       plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
-    #       body + " " + "mass as a function of radius \n")
-    # graph(r_whole, p_whole,
-    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-    #       body + " " + "pressure as a function of radius \n")
-    # graph(r_whole, rho_whole, plt.plot,
-    #       fr'$\rho_c$ = {rho_c0}' '\n'
-    #       fr'$K$ = {Kappa.real}' '\n' 
-    #       fr'$\Gamma$ = {Gamma}',
-    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-    #       body + " " + "energy density as a function of radius \n")
+    graph(r_whole, m_whole,
+          plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
+          body + " " + "mass as a function of radius \n")
+    graph(r_whole, p_whole,
+          plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+          body + " " + "pressure as a function of radius \n")
+    graph(r_whole, rho_whole, plt.plot,
+          fr'$\rho_c$ = {rho_c0}' '\n'
+          fr'$K$ = {Kappa.real}' '\n' 
+          fr'$\Gamma$ = {Gamma}',
+          "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+          body + " " + "energy density as a function of radius \n")
     
     print("Tähden säde: \n" + str(r_whole[-1]) + 
           "\n Tähden massa: \n" + str(m_whole[-1]))
@@ -761,7 +761,7 @@ def main(model, args=[]):
                      "Neutron Star (polytrope)"], 
                     [0, 1.5, 7e8, 0.25, 1.8178813419269544e-20+0j, 0, 1.8178813419269544e-20+0j, 0, 0, 0, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 7e8, 0.1, 1.8178813419269544e-10+0j, 0, 1.8178813419269544e-10+0j, 0, 0, 0, 0, 0, 
+                    [3, 7e8, 2.2, 1.8178813419269544e-15+0j, 0, 1.8178813419269544e-15+0j, 0, 0, 0, 0, 0, 
                      "Relativistic White Dwarf"],
                     [], 
                     [], 
@@ -884,16 +884,16 @@ def MR_relaatio(rho_min, rho_max, N_MR):
     print("rhospan: " + str(rhospan))
     R = []
     M = []
-    KAPPA = 0.05
+    # KAPPA = 0.05
+    # KAPPA = 2 # REL
+    KAPPA = 6 # NREL
     # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
     # //
     # Solve the TOV for each rho0 in the range of rhospan.
     for rho0 in rhospan:
-        r, m, p, rho = main("CUSTOM", [3, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
+        r, m, p, rho = main("CUSTOM", [1.5, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
                        "Relativistic White Dwarf"]) 
-        KAPPA += 0.5
-        # main("CUSTOM", [1.5, 6e6, 1, rho0+0j, 0, rho0+0j, 0, 0, 0, 1, 0, 
-        #   "Non-relativistic White Dwarf"])
+        # KAPPA += 0.5
         
         # r_boundary = find_radius(p, r, raja=0.05)
         r_boundary = r[-1]
@@ -1082,6 +1082,7 @@ def NS_MODEL():
             
     return NS_r, NS_m, NS_p, NS_rho
     
+NS_MODEL()
 main("WD_REL")
 # 1e-18, 1e-13
-MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-10+0j, 750)
+# MR_relaatio(1.8178813419269544e-17+0j, 1.8178813419269544e-15+0j, 750)
