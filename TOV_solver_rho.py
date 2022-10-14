@@ -237,8 +237,8 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     print("Saadut TOV ratkaisut ([m] = eV, [p] = eV^4 ja [rho] = eV^4): \n")
     print("Säde: \n \n" + str(r.real) + 
     "\n \n Massa: \n \n" + str(m.real) + 
-    "\n \n Energiatiheys: \n \n" + str(p.real) + 
-    "\n \n Paine : \n \n" + str(rho.real) + "\n \n")
+    "\n \n Energiatiheys: \n \n" + str(rho.real) + 
+    "\n \n Paine : \n \n" + str(p.real) + "\n \n")
 
     # rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
     
@@ -307,9 +307,9 @@ def found_radius(t, y, d1, d2, d3, d4, d5):
 def main(model, args=[]):
     
     model_choise = ["WD_NREL", "WD_REL"]
-    model_params = [[1.5, 0, 0, 0, 0, 1e22+0j, 0, 3, 2, 1, 0, 
+    model_params = [[1.5, 0, 0, 0, 0, 1e14+0j, 0, 3, 2, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 0, 0, 0, 0, 1e22+0j, 0, 3, 2, 2, 0, 
+                    [3, 0, 0, 0, 0, 1e8+0j, 0, 3, 2, 2, 0, 
                      "Relativistic White Dwarf"]]
     
     if model == "CUSTOM":
