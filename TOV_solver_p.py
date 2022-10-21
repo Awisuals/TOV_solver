@@ -262,7 +262,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     # # # //
     # # # Let's plot the model of the solution on graphs in units:
     # # # [m] = kg, [p] = erg/cm**3 ja [rho] = g/cm**3 
-    graph(r/1000, unit_conversion(1, "M", m, -1),
+    graph(r/10000, unit_conversion(1, "M", m, -1)/2e30,
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
           body + " " + "mass as a function of radius \n", 1)
     graph(r/1000, unit_conversion(2, "P", p, -1),
@@ -317,7 +317,7 @@ def main(model, args=[]):
                      "Neutron Star (polytrope)"], 
                     [1.5, 7e8, 0.25, 1.8178813419269544e-13+0j, 0, 1.8178813419269544e-13+0j, 0, 0, 0, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 7e8, 1.94888854486, 1.8178813419269544e-21+0j, 0, 1.8178813419269544e-21+0j, 0, 0, 0, 0, 0, 
+                    [3, 7e8, 100, 1.8178813419269544e-21+0j, 0, 1.8178813419269544e-21+0j, 0, 0, 0, 0, 0, 
                      "Relativistic White Dwarf"],
                     [], 
                     [], 

@@ -90,15 +90,27 @@ def EoS_p2r(p, Gamma, Kappa):
     return rho
 
 
+
 def EoS_degelgas(rho):
     m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
-    mu_e = 2
-    m_mu = nat.convert(1.7762828666e-26 * nat.kg, nat.eV).value
-    a = (m_e**4)/(24*np.pi**2)
-    b = ((3*np.pi**2)/(mu_e*m_mu*m_e**3))**(1/3)
-    y = lambda z : b*z**(1/3)
-    f = lambda x : x*(2*x**2-3)*(x**2+1)**(1/2)+3*np.log(x+(1+x**2)**(1/2))
-    return a*f(y(rho))
+    m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
+    a = (m_e**4)/(8*np.pi**2)
+    b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
+    def x(rho):
+        return b*rho**(1/3)
+    def f(x):
+        return (1/3)*x**3*(2*x**3-3)*(x**2+1)**(1/2)+np.log(x+(1+x**2)**(1/2))
+    return a*f(x(rho))
+
+# def EoS_degelgas(rho):
+#     m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
+#     mu_e = 2
+#     m_mu = nat.convert(1.7762828666e-26 * nat.kg, nat.eV).value
+#     a = (m_e**4)/(24*np.pi**2)
+#     b = ((3*np.pi**2)/(mu_e*m_mu*m_e**3))**(1/3)
+#     y = lambda z : b*z**(1/3)
+#     f = lambda x : x*(2*x**2-3)*(x**2+1)**(1/2)+3*np.log(x+(1+x**2)**(1/2))
+#     return a*f(y(rho))
 
 
 def EoS_choiser(choise, interpolation=0., Gamma=0., Kappa=0., p=0., rho=0.):
