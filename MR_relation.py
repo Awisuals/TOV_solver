@@ -4,13 +4,8 @@ Created on Wed Oct  5  2022
 
 @author: Antero
 """
-from scipy.integrate import solve_ivp
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-from scipy.interpolate import interp1d
-import scipy.constants as sc
-import natpy as nat
 
 from functions import *
 from structure_equations import *
@@ -100,3 +95,6 @@ def MR_relaatio(rho_min, rho_max, N_MR):
     graph(R, unit_conversion(1, "M", M, -1), plt.plot, "Massa-säde - relaatio", "Säde",
           "Massa", 'linear', "Massa-säde", 1, 1)
     return R, M
+
+MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 100)#  3e-15 newtonilaiselle rajalle
+

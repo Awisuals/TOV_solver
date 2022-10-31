@@ -16,8 +16,9 @@ Write DE-group as:
     TOV -> Energy density
 And solve it.
 """
+step = 0
 
-def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
+def set_initial_conditions(rmin, G, K, rho0=0., p0=0., a=0):
     """
     Utility routine to set initial data. Can be given either
     pressure or energy density at core. Value a tells
@@ -70,7 +71,7 @@ def set_initial_conditions(rmin, G, K, rho0=0, p0=0, a=0):
     if a == 3:
         rho = rho_values0[a]
         p = p_values0[a]
-    m = 4./3.*np.pi*rho*rmin**3
+    m = 4./3.*np.pi*rho0*rmin**3
     # m = 0
     # print("m, p, rho: " + str(m) + str(p) + str(rho))
     return m, p, rho
@@ -89,11 +90,24 @@ def TOV_rho(r, y, K, G, interpolation, eos_choise, tov_choise):
     rho = y[1].real + 0j
     p = EoS_choiser(eos_choise, interpolation, G, K, 0, rho).real + 0j
     
+    global step    
+    
     # Ratkaistavat yhtälöt // Equations to be solved
     dy = np.empty_like(y)
     # Massa ja Energiatiheys DY // Mass and energy density DE
     dy[0] = Mass_in_radius(rho, r)                  # dmdr
     dy[1] = TOV_choiser(tov_choise, m ,p, rho, r)  # drhodr
+    
+    print("\n \n DEBUG printing \n" + 
+          "\n Step: " + str(step) +
+          "\n Radius: " + str(r) +
+          "\n Mass: " + str(m) + 
+          "\n Energy density: " + str(rho) + 
+          "\n Pressure: " + str(p) + 
+          "\n Mass derivate: " + str(dy[0]) + 
+          "\n Energy density derivate: " + str(dy[1]))
+
+    step += 1    
     return dy
 
 # Määritellään funktio TOV-yhtälöiden ratkaisemiseksi ja koodin ajon
@@ -103,8 +117,7 @@ def TOV_rho(r, y, K, G, interpolation, eos_choise, tov_choise):
 # Let's define a function to solve the TOV equations and to help run the code
 # easier. The function is given a bunch of parameters and it solves
 # previously defined equations.
-def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
-              rho_c=0, p_c=0, a=0, eos_choise=0, tov_choise=0, interpolation=0, body=""):
+def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_c=0, a=0, eos_choise=0, tov_choise=0, interpolation=0, body=""):
     """
     Appropriate initial values and equations are chosen. Solves TOV equations
     in this case for the corresponding astrophysical body. As a solution
@@ -190,8 +203,8 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     "\n rho_c = "        + str(rho_c) +
     "\n p_c = "          + str(p_c) +
     "\n a = "            + str(a) +
-    "\n eos_choise = "     + str(eos_choise) +
-    "\n tov_choise = "       + str(tov_choise) +
+    "\n eos_choise = "   + str(eos_choise) +
+    "\n tov_choise = "   + str(tov_choise) +
     "\n interpolate = "  + str(interpolation) + "\n \n")
     
     Gamma = gamma_from_n(n)
@@ -212,12 +225,8 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     # Ratkaistaan TOV annetuilla parametreilla 
     # // 
     # Let's solve the TOV with the given parameters
-    # soln = solve_ivp(TOV, (r0, rf), y0, method='BDF',
-    #                  dense_output=True, events=found_radius,
-    #                  args=(Kappa, Gamma, interpolation, rho_func, p_func))
-
-    soln = solve_ivp(TOV_rho, (rs, rf), (m.real, rho.real), method='Radau',
-    first_step=1e-6, dense_output=True, events=found_radius, 
+    soln = solve_ivp(TOV_rho, (rs, rf), (m.real, rho.real), method='BDF',
+    dense_output=False, events=found_radius, first_step=1e-10,
     args=(Kappa, Gamma, interpolation, eos_choise, tov_choise))
     
     print("\n Solverin parametreja:")
@@ -237,8 +246,8 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
     print("Saadut TOV ratkaisut ([m] = eV, [p] = eV^4 ja [rho] = eV^4): \n")
     print("Säde: \n \n" + str(r.real) + 
     "\n \n Massa: \n \n" + str(m.real) + 
-    "\n \n Energiatiheys: \n \n" + str(p.real) + 
-    "\n \n Paine : \n \n" + str(rho.real) + "\n \n")
+    "\n \n Energiatiheys: \n \n" + str(rho.real) + 
+    "\n \n Paine : \n \n" + str(p.real) + "\n \n")
 
     # rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
     
@@ -272,7 +281,6 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0,
           "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
           body + " " + "energy density as a function of radius \n", 1, 1)
     
-    
     print("Tähden säde: \n" + str(r[-1]) + 
           "\n Tähden massa: \n" + str(m[-1]) + 
           "\n \n")
@@ -301,15 +309,15 @@ def found_radius(t, y, d1, d2, d3, d4, d5):
 
     """
     d1, d2, d3, d4, d5 = d1, d2, d3, d4, d5
-    return y[1].real
+    return EoS_degelgas(y[1].real)
 
 
 def main(model, args=[]):
     
     model_choise = ["WD_NREL", "WD_REL"]
-    model_params = [[1.5, 0, 0, 0, 0, 1e22+0j, 0, 3, 2, 1, 0, 
+    model_params = [[1.5, 0, 0, 0, 0, 1e14+0j, 0, 3, 2, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 0, 0, 0, 0, 1e22+0j, 0, 3, 2, 2, 0, 
+                    [3, 0, 0, 0, 0, 1e20+0j, 0, 3, 2, 2, 0, 
                      "Relativistic White Dwarf"]]
     
     if model == "CUSTOM":
@@ -360,7 +368,7 @@ def main(model, args=[]):
     # //
     # Let's set the integration parameters.
     # Integrator adaptive, stops the integration at the star boundary.
-    rmin, rmax = 5100, np.inf # 1e-3m
+    rmin, rmax = 1e-3, np.inf # 1e-3m
     N = 500
     rspan = np.linspace(rmin, rmax, N)
     
@@ -370,7 +378,7 @@ def main(model, args=[]):
     # Ode-ratkaisijan lopettaminen ehdon täyttyessä.
     # //
     # Termination of ode solver when met with condition.
-    found_radius.terminal = True
+    found_radius.terminal = True # Should be true when works
     found_radius.direction = -1    
     
     r_sol, m_sol, p_sol, rho_sol = TOV_solver([r0, rf], n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
@@ -378,4 +386,9 @@ def main(model, args=[]):
     
     return r_sol, m_sol, p_sol, rho_sol
 
-main("WD_REL")
+# main("WD_REL")
+
+
+rho = np.linspace(1e-3, 1e22, num=1000)
+graph(rho, EoS_degelgas(rho), plt.plot, "Pressure", "Energy density", "Pressure (erg/cm^3)", 'linear',
+        "pressure as a function of energy density \n", 1, 1)
