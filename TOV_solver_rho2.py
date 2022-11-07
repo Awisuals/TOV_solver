@@ -4,6 +4,7 @@ Created on Mon Oct  31  2022
 
 @author: Antero
 """
+from re import M
 import numpy as np
 import scipy.constants as sc
 import natpy as nat
@@ -13,6 +14,7 @@ import matplotlib.pyplot as plt
 from functions import graph
 
 step = 0
+<<<<<<< HEAD
 
 # Natural units
 # def Eos_degelgas_deriv(rho):
@@ -23,6 +25,12 @@ step = 0
 #     x = lambda y: b*y**(1/3)
 #     dpdrho = a*b*(3*rho**(2/3))**(-1)*((14*x(rho)**7+12*x(rho)**5-12*x(rho)**4-9*x(rho)**2+3)/(3*(x(rho)**2+1)**(1/2)))
 #     return dpdrho
+=======
+M = []
+RHO = []
+P = []
+R = []
+>>>>>>> origin/kotikone
 
 # Natural units
 # def EoS_degelgas(rho):
@@ -122,7 +130,10 @@ def TOV_rho(r, y):
     rho = y[1].real + 0j
     p = EoS_degelgas(rho)    
     global step    
-    
+    global M
+    global RHO
+    global P
+    global R
     # Ratkaistavat yhtälöt // Equations to be solved
     dy = np.empty_like(y)
     # Massa ja Energiatiheys DY // Mass and energy density DE
@@ -137,6 +148,26 @@ def TOV_rho(r, y):
           "\n Pressure: " + str(p) + 
           "\n Mass derivate: " + str(dy[0]) + 
           "\n Energy density derivate: " + str(dy[1]))
+    
+    M.append(m)
+    RHO.append(rho)
+    P.append(p)
+    R.append(r)
+    
+    if step > 50000:
+        
+        graph(R, M,
+            plt.scatter, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
+            "mass as a function of radius \n", new=1, show=1)
+
+        graph(R, P, 
+            plt.scatter, "Pressure", "Radius, r", "Pressure, p (erg/cm^3)", 'linear', 
+            "pressure as a function of radius \n", new=1, show=1)
+
+
+        graph(R, RHO, 
+            plt.scatter, "Energy density", "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+            "energy density as a function of radius \n", new=1, show=1)
 
     step += 1    
     return dy
@@ -238,7 +269,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     "\n tov_choise = "   + str(tov_choise) +
     "\n interpolate = "  + str(interpolation) + "\n \n")
     
-    m = Mass_in_radius(rho_c, rs)
+    m = 1e-3 # Mass_in_radius(rho_c, rs)
     
     # print("Tulostetaan polytrooppivakiot:" 
     #       + "\n Kappa: " + str(Kappa)
@@ -403,7 +434,7 @@ def main(model, args=[]):
     # //
     # Termination of ode solver when met with condition.
     found_radius.terminal = True # Should be true when works
-    found_radius.direction = -1    
+    found_radius.direction = 1    
     
     r_sol, m_sol, p_sol, rho_sol = TOV_solver([r0, rf], n, R_body, kappa_choise, rho_K, p_K, rho_c, p_c, 
                              a, rho_func, p_func, interpolation, body)
