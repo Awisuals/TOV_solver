@@ -14,27 +14,56 @@ from functions import graph
 
 step = 0
 
+# Natural units
+# def Eos_degelgas_deriv(rho):
+#     m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
+#     m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
+#     a = (m_e**4)/(8*np.pi**2)
+#     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
+#     x = lambda y: b*y**(1/3)
+#     dpdrho = a*b*(3*rho**(2/3))**(-1)*((14*x(rho)**7+12*x(rho)**5-12*x(rho)**4-9*x(rho)**2+3)/(3*(x(rho)**2+1)**(1/2)))
+#     return dpdrho
 
+# Natural units
+# def EoS_degelgas(rho):
+#     m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
+#     m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
+#     a = (m_e**4)/(8*np.pi**2)
+#     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
+#     def x(rho):
+#         return b*(rho)**(1/3)
+#     def f(x):
+#         return (1/3)*x**3*(1+x**2)**(1/2)*(2*x**3-3)+np.log(x+(1+x**2)**(1/2))
+#     # print(a, b)
+#     return a*f(x(rho))
+
+
+# Geometrizied units
 def Eos_degelgas_deriv(rho):
-    m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
-    m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
-    a = (m_e**4)/(8*np.pi**2)
-    b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
-    x = lambda y: b*y**(1/3)
+    m_p = 1.2421074639833655131442150601514926481508985593346205257686e-54# nat.convert(sc.electron_mass * nat.kg, nat.eV).value
+    m_e = 6.7647286736967176592900638645477498886083469478687063716025e-58# nat.convert(sc.proton_mass * nat.kg, nat.eV).value
+    hbar = sc.hbar
+    a = (m_e**4)/(8*np.pi**2*hbar**3)
+    b = ((3*np.pi**2*hbar**3)/(2*m_p*m_e**3))**(1/3)
+    def x(rho):
+        return b*(rho)**(1/3)
     dpdrho = a*b*(3*rho**(2/3))**(-1)*((14*x(rho)**7+12*x(rho)**5-12*x(rho)**4-9*x(rho)**2+3)/(3*(x(rho)**2+1)**(1/2)))
     return dpdrho
 
+# Geometrizied units
 def EoS_degelgas(rho):
-    m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
-    m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
-    a = (m_e**4)/(8*np.pi**2)
-    b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
+    m_p = 1.2421074639833655131442150601514926481508985593346205257686e-54# nat.convert(sc.electron_mass * nat.kg, nat.eV).value
+    m_e = 6.7647286736967176592900638645477498886083469478687063716025e-58# nat.convert(sc.proton_mass * nat.kg, nat.eV).value
+    hbar = sc.hbar
+    a = (m_e**4)/(8*np.pi**2*hbar**3)
+    b = ((3*np.pi**2*hbar**3)/(2*m_p*m_e**3))**(1/3)
     def x(rho):
         return b*(rho)**(1/3)
     def f(x):
         return (1/3)*x**3*(1+x**2)**(1/2)*(2*x**3-3)+np.log(x+(1+x**2)**(1/2))
     # print(a, b)
     return a*f(x(rho))
+
 
 def Mass_in_radius(rho, r):
     dmdr = 4*np.pi*rho*r**2
@@ -62,15 +91,20 @@ def ToV(m=0., p=0., rho=0., r=0.):
     _type_
         _description_
     """
-    G = sc.gravitational_constant
+    # G = sc.gravitational_constant
     
-    m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
-    m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
-    a = (m_e**4)/(8*np.pi**2)
-    b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
-
+    m_p = 1.2421074639833655131442150601514926481508985593346205257686e-54# nat.convert(sc.electron_mass * nat.kg, nat.eV).value
+    m_e = 6.7647286736967176592900638645477498886083469478687063716025e-58# nat.convert(sc.proton_mass * nat.kg, nat.eV).value
+    hbar = sc.hbar
+    a = (m_e**4)/(8*np.pi**2*hbar**3)
+    b = ((3*np.pi**2*hbar**3)/(2*m_p*m_e**3))**(1/3)
+    
     # drhodr
-    tov = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
+    # Geometrizied units (C=G=1)
+    tov = (-m*rho/r**2)*(1+p/rho)*(1+((4*np.pi*r**3*p)/(m)))*(1-2*m/r)**(-1)*(Eos_degelgas_deriv(rho))**(-1)
+    
+    # Natural units
+    # tov = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
     # print("\n TOV choiser value from function TOV_choiser: \n " + str(tov))
     return tov
 
@@ -219,7 +253,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     # // 
     # Let's solve the TOV with the given parameters
     soln = solve_ivp(TOV_rho, (rs, rf), (m, rho_c), method='BDF',
-    dense_output=False, events=found_radius, first_step=1e-10)
+    dense_output=True, events=found_radius, first_step=1e-10)
     
     print("\n Solverin parametreja:")
     print(soln.nfev, 'evaluations required')
@@ -299,7 +333,7 @@ def found_radius(t, y):
 
     """
     # d1, d2, d3, d4, d5 = d1, d2, d3, d4, d5
-    return EoS_degelgas(y[1].real)
+    return EoS_degelgas(y[1].real)<=0
 
 
 def main(model, args=[]):
@@ -307,7 +341,7 @@ def main(model, args=[]):
     model_choise = ["WD_NREL", "WD_REL"]
     model_params = [[1.5, 0, 0, 0, 0, 1e14+0j, 0, 3, 2, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 0, 0, 0, 0, 1e20+0j, 0, 3, 2, 2, 0, 
+                    [3, 0, 0, 0, 0, 1e-15+0j, 0, 3, 2, 2, 0, 
                      "Relativistic White Dwarf"]]
     
     if model == "CUSTOM":
@@ -358,7 +392,7 @@ def main(model, args=[]):
     # //
     # Let's set the integration parameters.
     # Integrator adaptive, stops the integration at the star boundary.
-    rmin, rmax = 1e-3, np.inf # 1e-3m
+    rmin, rmax = 1e-3, 10000 # np.inf # 1e-3m
     N = 500
     rspan = np.linspace(rmin, rmax, N)
     
