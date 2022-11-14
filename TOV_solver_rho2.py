@@ -30,8 +30,10 @@ def EoS_degelgas(rho):
     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
     def x(rho):
         return b*(rho)**(1/3)
+    # def f(x):
+        # return (1/3)*x**3*(1+x**2)**(1/2)*(2*x**3-3)+np.log(x+(1+x**2)**(1/2))
     def f(x):
-        return (1/3)*x**3*(1+x**2)**(1/2)*(2*x**3-3)+np.log(x+(1+x**2)**(1/2))
+        return x*(1+x**2)**(1/2)*(2*x**2-3)+3*np.log(x+(1+x**2)**(1/2))
     # print(a, b)
     return a*f(x(rho))
 
@@ -42,7 +44,8 @@ def Eos_degelgas_deriv(rho):
     a = (m_e**4)/(8*np.pi**2)
     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
     x = lambda y: b*y**(1/3)
-    dpdrho = a*b*(3*rho**(2/3))**(-1)*((14*x(rho)**7+12*x(rho)**5-12*x(rho)**4-9*x(rho)**2+3)/(3*(x(rho)**2+1)**(1/2)))
+    # dpdrho = a*b*(3*rho**(2/3))**(-1)*((14*x(rho)**7+12*x(rho)**5-12*x(rho)**4-9*x(rho)**2+3)/(3*(x(rho)**2+1)**(1/2)))
+    dpdrho = (a*b)/(3*rho**(2/3))*((8*x(rho)**4)/((1+x(rho)**2)**(1/2)))
     return dpdrho
 
 def Mass_in_radius(rho, r):
@@ -122,8 +125,8 @@ def TOV_rho(r, y, rho_center):
     
     dy[0] = 4*np.pi*rho*r**2
     # dy[1] = -(((rho+p)*(G*m + 4*np.pi*G*r**3*p))/(r*(r-2*G*m)))*(Eos_degelgas_deriv(rho))**(-1)
-    dy[1] = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
-    # dy[1] = (-(G*m*rho)/(r**2))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1)
+    # dy[1] = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
+    dy[1] = (-(G*m*rho)/(r**2))*(Eos_degelgas_deriv(rho))**(-1)
     
     newt_p_deriv = (-(G*m*rho)/(r**2))*(Eos_degelgas_deriv(rho))**(-1)
     tov_p_deriv = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
@@ -285,7 +288,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     # // 
     # Let's solve the TOV with the given parameters
     soln = solve_ivp(TOV_rho, (rs, rf), (m, rho_c), method='BDF',
-    dense_output=False, events=found_radius, max_step = 1e21, args=[rho_center]) # ,max_step = 10 , first_step=1e-10
+    dense_output=False, events=found_radius, max_step = 1e20, args=[rho_center]) # ,max_step = 10 , first_step=1e-10,
     
     print("\n Solverin parametreja:")
     print(soln.nfev, 'evaluations required')
@@ -297,9 +300,9 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     # Ratkaisut yksiköissä // Solutions in units:
     # [m] = kg, [p] = m**-2 ja [rho] = m**-2
     r = soln.t * 1.9733e-16 * 1e-3 # 2.6544006e-25*1e9
-    m = soln.y[0].real # * 1.7827e-27 # 1.7827e-36
-    rho = soln.y[1].real # * 2.0852e37 # 3.16435553043e40
-    p = EoS_degelgas(rho) # * 2.0852e37 # 3.16435553043e40
+    m = soln.y[0].real * 1.7827e-27 # / 1.9891e30 # 1.7827e-36
+    rho = soln.y[1].real * 2.0852e37 # 3.16435553043e40
+    p = EoS_degelgas(rho) * 2.0852e37 # 3.16435553043e40
 
     print("Saadut TOV ratkaisut ([m] = eV, [p] = eV^4 ja [rho] = eV^4): \n")
     print("Säde: \n \n" + str(r.real) + 
@@ -316,13 +319,13 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     graph(r, m,
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
           body + " " + "mass as a function of radius \n")
-    graph(r, p,
-          plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-          body + " " + "pressure as a function of radius \n", 1)
-    graph(r, rho, plt.plot,
-          fr'$\rho_c$ = {rho_c}' '\n',
-          "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-          body + " " + "energy density as a function of radius \n", 1, 1)
+    # graph(r, p,
+    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+    #       body + " " + "pressure as a function of radius \n", 1)
+    # graph(r, rho, plt.plot,
+    #       fr'$\rho_c$ = {rho_c}' '\n',
+    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+    #       body + " " + "energy density as a function of radius \n", 1, 1)
     
     
     # print("\n Newtonian energy denisty derivative: \n")
@@ -360,7 +363,7 @@ def found_radius(t, y, d1):
     # d1, d2, d3, d4, d5 = d1, d2, d3, d4, d5
     d1 = d1
     pressure = EoS_degelgas(y[1].real)
-    return  y[1].real >= 1e-4*d1# 4.3e21 # 1e16
+    return pressure >= 1e-9*d1# 4.3e21 # 1e16
 
 
 def main(model, args=[]):
@@ -368,7 +371,7 @@ def main(model, args=[]):
     model_choise = ["WD_NREL", "WD_REL"]
     model_params = [[1.5, 0, 0, 0, 0, 1e14+0j, 0, 3, 2, 1, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [3, 0, 0, 0, 0, 4.3e-13, 0, 3, 2, 2, 0, 
+                    [3, 0, 0, 0, 0, 4.3e-9, 0, 3, 2, 2, 0, 
                      "Relativistic White Dwarf"]]
     # Variation range for REL_WD is 4.3e21 - 4.3e25
     if model == "CUSTOM":
@@ -405,7 +408,7 @@ def main(model, args=[]):
     # Määrätään vakioita.
     # //
     # Determine constants.
-    M_sun = 2e30              # kg
+    M_sun = 1.9891e30              # kg
     R_WD0 = 7e8               # m
     
     # Luonnollisia yksiköitä 
@@ -524,8 +527,8 @@ def MR_relaatio(rho_min, rho_max, N_MR):
           "Massa", 'linear', "Massa-säde", 1, 1)
     return R, M
 
-# MR_relaatio(5e-15, 5e-2, 200)
+MR_relaatio(5e-14, 5e-6, 50)
 
 
 
-main("WD_REL")
+# main("WD_REL")
