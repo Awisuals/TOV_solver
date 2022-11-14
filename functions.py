@@ -50,7 +50,7 @@ def graph(x, y, style, label, xlabel, ylabel, scale, title, new=0, show=0):
     
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.xscale(scale)
+    plt.xscale(scale) 
     plt.yscale(scale)
     plt.title(title)
     plt.legend()
