@@ -18,7 +18,6 @@ by solving which the structure of the star can be described.
 
 def Mass_in_radius(rho, r):
     dmdr = 4*np.pi*rho*r**2
-    # print("\n mass derivate from function Mass_in radius: \n " + str(dmdr))
     return dmdr
 
 
@@ -90,16 +89,6 @@ def EoS_p2r(p, Gamma, Kappa):
     """
     rho = (p/Kappa)**(1/Gamma)
     return rho
-
-# def Eos_degelgas_deriv(rho):
-#     m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
-#     m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
-#     a = (m_e**4)/(8*np.pi**2)
-#     b = ((3*np.pi**2)/(2*m_p*m_e**3))
-    
-#     dpdrho = ((a*b*(4*b*rho-3)*(((b*rho)**(2/3)+1)**(1/2)))/(3)) + ((2*a*b**2*rho*(b*rho)**(2/3))/(9*((b*rho)**(2/3)+1)**(1/2))) + ((((a*b)/(3*(b*rho)**(2/3)))-((a*b*(b*rho)**(2/3))/(3)))/((b*rho)**(2/3)+1)**(1/2))
-#     return dpdrho
-
 
 
 def EoS_degelgas(rho):

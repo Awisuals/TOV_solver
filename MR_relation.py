@@ -6,6 +6,7 @@ Created on Wed Oct  5  2022
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 from functions import *
 from structure_equations import *
@@ -36,7 +37,7 @@ Now let's model several stars and plot them
 Mass-Radius - relation.
 """
 
-def MR_relaatio(rho_min, rho_max, N_MR):
+def MR_relaatio(rho_min1, rho_min2, rho_max, N_MR1, N_MR2):
     """
     Solves mass-radius - relation.
 
@@ -55,18 +56,27 @@ def MR_relaatio(rho_min, rho_max, N_MR):
         Masses of star sequense.
 
     """
-    # Build N_MR amount of star models
-    rhospan = np.logspace(np.log10(rho_min), np.log10(rho_max), N_MR)
-    print("rhospan: " + str(rhospan))
+    # Build N_MR1 or N_MR2 amount of star models
+    rhospan1 = np.logspace(np.log10(rho_min1), np.log10(rho_max), N_MR1)
+    rhospan2 = np.logspace(np.log10(rho_min2), np.log10(rho_max), N_MR2)
+    print("\n \n rhospan: " + str(rhospan1))
+    
     R_tov = []
     M_tov = []
     
     R_newt = []
     M_newt = []
+    
+    R_tov_zoom = []
+    M_tov_zoom = []
+    
+    R_newt_zoom = []
+    M_newt_zoom = []
+    
     # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
     # //
     # Solve the TOV for each rho0 in the range of rhospan.
-    for rho0 in rhospan:
+    for rho0 in rhospan1:
         r_tov, m_tov, p_tov, rho_tov = TOV_solver(ir=[], 
                n=0, 
                R_body=0, 
@@ -103,27 +113,74 @@ def MR_relaatio(rho_min, rho_max, N_MR):
         R_newt.append(r_boundary)
         M_newt.append(m_boundary)
         
-    # Printtaa ja plottaa massa-säde - relaation. 
+    print("\n \n rhospan2: " + str(rhospan2))
+    
+    for rho0 in rhospan2:
+        r_tov_zoom, m_tov_zoom, p_tov_zoom, rho_tov_zoom = TOV_solver(ir=[], 
+               n=0, 
+               R_body=0, 
+               kappa_choise=0, 
+               rho_K=0, 
+               p_K=0, 
+               rho_c=rho0, 
+               p_c=0, 
+               a=3, 
+               eos_choise=2, 
+               tov_choise=2, 
+               interpolation=0, 
+               body="TOV White dwarf")
+        r_boundary = r_tov_zoom[-1]
+        m_boundary = m_tov_zoom[-1]
+        R_tov_zoom.append(r_boundary)
+        M_tov_zoom.append(m_boundary)
+        
+        r_newt_zoom, m_newt_zoom, p_newt_zoom, rho_newt_zoom = TOV_solver(ir=[], 
+               n=0, 
+               R_body=0, 
+               kappa_choise=0, 
+               rho_K=0, 
+               p_K=0, 
+               rho_c=rho0, 
+               p_c=0, 
+               a=3, 
+               eos_choise=2, 
+               tov_choise=3, 
+               interpolation=0, 
+               body="NEWT White dwarf")
+        r_boundary = r_newt_zoom[-1]
+        m_boundary = m_newt_zoom[-1]
+        R_newt_zoom.append(r_boundary)
+        M_newt_zoom.append(m_boundary)
+        
+    # Plottaa massa-säde - relaation. 
     # //
-    # Print and plot the mass-radius relation.
-    # print("Tulostetaan ratkaistut massat ja niitä vastaavat säteet: \n")
-    # print("Säteet: \n " + str(R) + "\n Massat: \n" + str(M))
-    # R_tov = np.array(R)
-    # M_tov = np.array(M)
+    # Pplot the mass-radius relation.
 
-    # graph(R, M, plt.scatter, "Massa-säde - relaatio", "Säde",
-    #       "Massa", 'linear', "Massa-säde", 1, 1)
-    graph(R_tov, M_tov, plt.plot, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde")
-    graph(R_newt, M_newt, plt.plot, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde", 0, 1)
+    fig, ax1 = plt.subplots() 
+    axins1 = inset_axes(ax1, width='30%', height='40%', loc='lower right', 
+                        bbox_to_anchor=(-0.12, 0.3, 1.1, 1.2),
+                        bbox_transform=ax1.transAxes)
     
-    # DELTA_R = R_newt - R_tov
-    # DELTA_M = M_newt - M_tov
+    ax1.plot(R_tov, M_tov, color='b', label=fr'TOV')
+    ax1.plot(R_newt, M_newt, color='red', label='Newtonilainen' , linestyle='--')
+
+    ax1.set(# title="a)", title_position='left',
+            xlabel=r'Säde, r ($R_{Earth}$)', 
+            ylabel= r'Massa, m ($M_{Sun}$)', 
+            xscale="linear", yscale="linear")
+    ax1.set_title('d)', loc="left")
+    ax1.legend(shadow=True, fancybox=False)
+    ax1.grid()
     
-    # graph(DELTA_R, M_newt, plt.plot, "Massa-säde - relaatio", "Säde",
-    #       "Massa", 'linear', "Massa-säde", 1, 1)
+    axins1.plot(R_tov_zoom, M_tov_zoom, color='b')
+    axins1.plot(R_newt_zoom, M_newt_zoom, color='red', linestyle='--')
+    
+    axins1.set(# title="a)", title_position='left',
+            xscale="linear", yscale="log")
+    axins1.grid()
+    
+    plt.show()
+    
     return
 
-MR_relaatio(2e-14+0j, 2e-6+0j, 50)
-
+MR_relaatio(2e-14+0j, 8e-10+0j, 8e-6+0j, 50, 75)
