@@ -26,14 +26,14 @@ TOV_M = []
 def EoS_degelgas(rho):
     m_e = nat.convert(sc.electron_mass * nat.kg, nat.GeV).value
     m_p = nat.convert(sc.proton_mass * nat.kg, nat.GeV).value
-    a = (m_e**4)/(8*np.pi**2)
+    a = (m_e**4)/(3*np.pi**2)
     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
     def x(rho):
         return b*(rho)**(1/3)
     # def f(x):
         # return (1/3)*x**3*(1+x**2)**(1/2)*(2*x**3-3)+np.log(x+(1+x**2)**(1/2))
     def f(x):
-        return x*(1+x**2)**(1/2)*(2*x**2-3)+3*np.log(x+(1+x**2)**(1/2))
+        return (1/8)*(x*(1+x**2)**(1/2)*(2*x**2-3)+3*np.log(x+(1+x**2)**(1/2)))
     # print(a, b)
     return a*f(x(rho))
 
@@ -41,56 +41,17 @@ def EoS_degelgas(rho):
 def Eos_degelgas_deriv(rho):
     m_e = nat.convert(sc.electron_mass * nat.kg, nat.GeV).value
     m_p = nat.convert(sc.proton_mass * nat.kg, nat.GeV).value
-    a = (m_e**4)/(8*np.pi**2)
+    a = (m_e**4)/(3*np.pi**2)
     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
     x = lambda y: b*y**(1/3)
     # dpdrho = a*b*(3*rho**(2/3))**(-1)*((14*x(rho)**7+12*x(rho)**5-12*x(rho)**4-9*x(rho)**2+3)/(3*(x(rho)**2+1)**(1/2)))
-    dpdrho = (a*b)/(3*rho**(2/3))*((8*x(rho)**4)/((1+x(rho)**2)**(1/2)))
+    dpdrho = (a*b)/(3*rho**(2/3))*((x(rho)**4)/((1+x(rho)**2)**(1/2)))
     return dpdrho
 
 def Mass_in_radius(rho, r):
     dmdr = 4*np.pi*rho*r**2
     # print("\n mass derivate from function Mass_in radius: \n " + str(dmdr))
     return dmdr
-
-def ToV(m=0., p=0., rho=0., r=0.):
-    """_summary_
-
-    Parameters
-    ----------
-    choise : _type_
-        _description_
-    m : _type_
-        _description_
-    p : _type_
-        _description_
-    rho : _type_
-        _description_
-    r : _type_
-        _description_
-
-    Returns
-    -------
-    _type_
-        _description_
-    """
-    # G = sc.gravitational_constant
-    # G = 1.7518e-45
-    G = 6.707113-57
-    
-    # drhodr
-    # Geometrizied units (C=G=1)
-    # tov = (-m*rho/r**2)*(1+p/rho)*(1+((4*np.pi*r**3*p)/(m)))*(1-2*m/r)**(-1)*(Eos_degelgas_deriv(rho))**(-1)
-    
-    # Natural units drhodr in modular form!
-    # tov = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
-    
-    # Natural units drhodr in TOV-form!
-    tov = -(((rho+p)*(G*m + 4*np.pi*G*r**3*p))/(r*(r-2*G*m)))*(Eos_degelgas_deriv(rho))**(-1)
-    
-    # print("\n TOV choiser value from function TOV_choiser: \n " + str(tov))
-    
-    return tov
 
 
 def TOV_rho(r, y, rho_center):
@@ -124,9 +85,9 @@ def TOV_rho(r, y, rho_center):
     # dy[1] = ToV(m ,p, rho, r)  # drhodr
     
     dy[0] = 4*np.pi*rho*r**2
-    # dy[1] = -(((rho+p)*(G*m + 4*np.pi*G*r**3*p))/(r*(r-2*G*m)))*(Eos_degelgas_deriv(rho))**(-1)
+    dy[1] = -(((rho+p)*(G*m + 4*np.pi*G*r**3*p))/(r*(r-2*G*m)))*(Eos_degelgas_deriv(rho))**(-1)
     # dy[1] = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
-    dy[1] = (-(G*m*rho)/(r**2))*(Eos_degelgas_deriv(rho))**(-1)
+    # dy[1] = (-(G*m*rho)/(r**2))*(Eos_degelgas_deriv(rho))**(-1)
     
     newt_p_deriv = (-(G*m*rho)/(r**2))*(Eos_degelgas_deriv(rho))**(-1)
     tov_p_deriv = ((-(G*m*rho)/(r**2))*(1+p/rho)*(1+(4*np.pi*r**3*p)/(m))*(1-(2*G*m)/(r))**(-1)*(Eos_degelgas_deriv(rho))**(-1))
@@ -288,7 +249,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     # // 
     # Let's solve the TOV with the given parameters
     soln = solve_ivp(TOV_rho, (rs, rf), (m, rho_c), method='BDF',
-    dense_output=False, events=found_radius, max_step = 1e20, args=[rho_center]) # ,max_step = 10 , first_step=1e-10,
+    dense_output=True, events=found_radius, max_step = 1e20, args=[rho_center]) # ,max_step = 10 , first_step=1e-10,
     
     print("\n Solverin parametreja:")
     print(soln.nfev, 'evaluations required')
@@ -299,8 +260,8 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     # TOV ratkaisut // TOV solutions
     # Ratkaisut yksiköissä // Solutions in units:
     # [m] = kg, [p] = m**-2 ja [rho] = m**-2
-    r = soln.t * 1.9733e-16 * 1e-3 # 2.6544006e-25*1e9
-    m = soln.y[0].real * 1.7827e-27 # / 1.9891e30 # 1.7827e-36
+    r = soln.t * 1.9733e-16 * 1e-3 / 6371 # 2.6544006e-25*1e9
+    m = soln.y[0].real * 1.7827e-27 / 1.9891e30 # / 1.9891e30 # 1.7827e-36
     rho = soln.y[1].real * 2.0852e37 # 3.16435553043e40
     p = EoS_degelgas(rho) * 2.0852e37 # 3.16435553043e40
 
@@ -319,13 +280,13 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     graph(r, m,
           plt.plot, "Mass", "Radius, r (m)", "Mass, m (kg)", 'linear',
           body + " " + "mass as a function of radius \n")
-    # graph(r, p,
-    #       plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
-    #       body + " " + "pressure as a function of radius \n", 1)
-    # graph(r, rho, plt.plot,
-    #       fr'$\rho_c$ = {rho_c}' '\n',
-    #       "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
-    #       body + " " + "energy density as a function of radius \n", 1, 1)
+    graph(r, p,
+          plt.plot, "Pressure", "Radius, r (m)", "Pressure (erg/cm^3)", 'linear',
+          body + " " + "pressure as a function of radius \n", 1)
+    graph(r, rho, plt.plot,
+          fr'$\rho_c$ = {rho_c}' '\n',
+          "Radius, r", "Energy density, rho (g/cm^3)", 'linear', 
+          body + " " + "energy density as a function of radius \n", 1, 1)
     
     
     # print("\n Newtonian energy denisty derivative: \n")
@@ -409,7 +370,7 @@ def main(model, args=[]):
     # //
     # Determine constants.
     M_sun = 1.9891e30              # kg
-    R_WD0 = 7e8               # m
+    R_earth = 6371               # km
     
     # Luonnollisia yksiköitä 
     # // 
@@ -527,8 +488,8 @@ def MR_relaatio(rho_min, rho_max, N_MR):
           "Massa", 'linear', "Massa-säde", 1, 1)
     return R, M
 
-MR_relaatio(5e-14, 5e-6, 50)
+# MR_relaatio(5e-14, 5e-6, 50)
 
 
 
-# main("WD_REL")
+main("WD_REL")

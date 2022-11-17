@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from functions import *
 from structure_equations import *
+from TOV_solver_rho import *
 """
 Ratkaistaan massa-säde relaatio. Etsitään TOV-yhtälöiden ratkaisuja
 jollakin rhospan-alueella. Ratkaistaan yhtälöitä siis tähden keskipisteen eri
@@ -23,19 +24,18 @@ Massa-Säde - relaatio.
 //
 Let's solve the mass-radius relation. We are looking for solutions to the
 TOV equations in some rhospan area. So let's solve the equations
-from the center of the star with varying values ​​of energy densities. Finds 
+from the center of the star with varying values of energy densities. Finds 
 solutions to a tov equation in rho form.
 
 
 Let's find the limit of the star (find_radius) from the pressure solution 
-and its equivalent mass from the mass solution. Let's save these values ​​in
+and its equivalent mass from the mass solution. Let's save these values in
 an array and plot them.
 
 Now let's model several stars and plot them
 Mass-Radius - relation.
 """
 
-# TODO korjaa
 def MR_relaatio(rho_min, rho_max, N_MR):
     """
     Solves mass-radius - relation.
@@ -56,45 +56,74 @@ def MR_relaatio(rho_min, rho_max, N_MR):
 
     """
     # Build N_MR amount of star models
-    
-    # rhospan = np.linspace(rho_min, rho_max, N_MR)
     rhospan = np.logspace(np.log10(rho_min), np.log10(rho_max), N_MR)
     print("rhospan: " + str(rhospan))
-    R = []
-    M = []
-    KAPPA = 1.94888854486 # REL
-    # KAPPA = 6.07706649646 # NREL
+    R_tov = []
+    M_tov = []
+    
+    R_newt = []
+    M_newt = []
     # Ratkaise TOV jokaiselle rho0:lle rhospan alueessa.
     # //
     # Solve the TOV for each rho0 in the range of rhospan.
     for rho0 in rhospan:
-        # r, m, p, rho = main("CUSTOM", [1.5, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
-        #                "Not Relativistic White Dwarf"]) 
-        # KAPPA += 0.5
+        r_tov, m_tov, p_tov, rho_tov = TOV_solver(ir=[], 
+               n=0, 
+               R_body=0, 
+               kappa_choise=0, 
+               rho_K=0, 
+               p_K=0, 
+               rho_c=rho0, 
+               p_c=0, 
+               a=3, 
+               eos_choise=2, 
+               tov_choise=2, 
+               interpolation=0, 
+               body="TOV White dwarf")
+        r_boundary = r_tov[-1]
+        m_boundary = m_tov[-1]
+        R_tov.append(r_boundary)
+        M_tov.append(m_boundary)
         
-        r, m, p, rho = main("CUSTOM", [3, 7e8, KAPPA, rho0+0j, 0, rho0+0j, 0, 0, 0, 0, 0, 
-                        "Relativistic White Dwarf"]) 
-
-        # r_boundary = find_radius(p, r, raja=0.05)
-        r_boundary = r[-1]
-        # m_boundary = find_mass_in_radius(m, r, r_boundary)
-        m_boundary = m[-1]
-        if m_boundary > 0:
-            R.append(r_boundary)
-            M.append(m_boundary)
+        r_newt, m_newt, p_newt, rho_newt = TOV_solver(ir=[], 
+               n=0, 
+               R_body=0, 
+               kappa_choise=0, 
+               rho_K=0, 
+               p_K=0, 
+               rho_c=rho0, 
+               p_c=0, 
+               a=3, 
+               eos_choise=2, 
+               tov_choise=3, 
+               interpolation=0, 
+               body="NEWT White dwarf")
+        r_boundary = r_newt[-1]
+        m_boundary = m_newt[-1]
+        R_newt.append(r_boundary)
+        M_newt.append(m_boundary)
+        
     # Printtaa ja plottaa massa-säde - relaation. 
     # //
     # Print and plot the mass-radius relation.
-    print("Tulostetaan ratkaistut massat ja niitä vastaavat säteet: \n")
-    print("Säteet: \n " + str(R) + "\n Massat: \n" + str(M))
-    R = np.array(R)
-    M = np.array(M)
+    # print("Tulostetaan ratkaistut massat ja niitä vastaavat säteet: \n")
+    # print("Säteet: \n " + str(R) + "\n Massat: \n" + str(M))
+    # R_tov = np.array(R)
+    # M_tov = np.array(M)
 
-    graph(R, unit_conversion(1, "M", M, -1), plt.scatter, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde", 1, 1)
-    graph(R, unit_conversion(1, "M", M, -1), plt.plot, "Massa-säde - relaatio", "Säde",
-          "Massa", 'linear', "Massa-säde", 1, 1)
-    return R, M
+    # graph(R, M, plt.scatter, "Massa-säde - relaatio", "Säde",
+    #       "Massa", 'linear', "Massa-säde", 1, 1)
+    graph(R_tov, M_tov, plt.plot, "Massa-säde - relaatio", "Säde",
+          "Massa", 'linear', "Massa-säde")
+    graph(R_newt, M_newt, plt.plot, "Massa-säde - relaatio", "Säde",
+          "Massa", 'linear', "Massa-säde", 0, 1)
+    
+    # DELTA_R = R_newt - R_tov
+    # DELTA_M = M_newt - M_tov
+    
+    # graph(DELTA_R, M_newt, plt.plot, "Massa-säde - relaatio", "Säde",
+    #       "Massa", 'linear', "Massa-säde", 1, 1)
+    return
 
-MR_relaatio(1.8178813419269544e-18+0j, 1.8178813419269544e-13+0j, 100)#  3e-15 newtonilaiselle rajalle
+MR_relaatio(2e-14+0j, 2e-6+0j, 50)
 
