@@ -217,7 +217,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     # //
     # Determine constants.
     M_sun = 1.9891e30              # kg
-    R_earth = 6371               # km
+    R_earth = 6371                 # km
     
     # Asetetaan integrointiparametrit.
     # Integraattori adaptiivinen, lopettaa integroinnin tähden rajalla.
@@ -272,7 +272,7 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     # // 
     # Let's solve the TOV with the given parameters
     soln = solve_ivp(TOV_rho, (rmin, rmax), (m0.real, rho0.real), method='BDF',
-    dense_output=False, events=found_radius, max_step=1e20,
+    dense_output=False, events=found_radius, max_step = 1e18, # for whole solution max_step=1e20 and closer to core smaller
     args=(Kappa, Gamma, interpolation, eos_choise, tov_choise, rho0.real))
     
     print("\n Solverin parametreja:")
@@ -298,24 +298,22 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
     "\n \n Massa: \n \n" + str(m.real) + 
     "\n \n Energiatiheys: \n \n" + str(rho.real) + 
     "\n \n Paine : \n \n" + str(p.real) + "\n \n")
-
-    # rho_c0 = unit_conversion(2, "RHO", rho_c.real, -1)
     
     # # # Piirretään ratkaisun malli kuvaajiin yksiköissä:
     # # # //
     # # # Let's plot the model of the solution on graphs in units:
     # # # [m] = kg, [p] = Pascal ja [rho] = J/m^3 
     graph(r, m,
-          plt.plot, fr'Mass, ' '\n' fr'$\rho_{"c"}$ = {rho0_si}' r' $\frac{\mathrm{J}}{\mathrm{m}^{3}}$', 
-          r'Radius, r ($R_{Earth}$)', r'Mass, m ($M_{Sun}$)', 'linear',
+          plt.plot, fr'Massa, ' '\n' fr'$\rho_{"c"}$ = {rho0_si}' r' $\frac{\mathrm{J}}{\mathrm{m}^{3}}$', 
+          r'Säde, r ($R_{Earth}$)', r'Massa, m ($M_{Sun}$)', 'linear', 'linear',
           body + " " + "mass as a function of radius \n", 1)
     graph(r, p,
-          plt.plot, fr'Pressure, ''\n' fr'$\rho_{"c"}$ = {rho0_si}' r' $\frac{\mathrm{J}}{\mathrm{m}^{3}}$', 
-          r'Radius, r ($R_{Earth}$)', r'Pressure, p (Pa)', 'linear',
+          plt.plot, fr'Paine, ''\n' fr'$\rho_{"c"}$ = {rho0_si}' r' $\frac{\mathrm{J}}{\mathrm{m}^{3}}$', 
+          r'Säde, r ($R_{Earth}$)', r'Paine, p (Pa)', 'linear', 'linear',
           body + " " + "pressure as a function of radius \n", 1)
     graph(r, rho, plt.plot,
-          fr'Energy density,' '\n' fr'$\rho_{"c"}$ = {rho0_si}' r' $\frac{\mathrm{J}}{\mathrm{m}^{3}}$',
-          r'Radius, r ($R_{Earth}$)', r'Energy density, $\rho$ $(\frac{\mathrm{J}}{\mathrm{m}^{3}})$', 'linear', 
+          fr'Energiatiheys,' '\n' fr'$\rho_{"c"}$ = {rho0_si}' r' $\frac{\mathrm{J}}{\mathrm{m}^{3}}$',
+          r'Säde, r ($R_{Earth}$)', r'Energiatiheys, $\rho$ $(\frac{\mathrm{J}}{\mathrm{m}^{3}})$', 'linear', 'linear', 
           body + " " + "energy density as a function of radius \n", 1)
     
     print("Tähden säde: \n" + str(r[-1]) + 
@@ -328,9 +326,9 @@ def TOV_solver(ir=[], n=0, R_body=0, kappa_choise=0, rho_K=0, p_K=0, rho_c=0, p_
 def models(model, args=[]):
     
     model_choise = ["WD_NREL", "WD_REL"]
-    model_params = [[0, 0, 0, 0, 0, 2e-7+0j, 0, 3, 2, 3, 0, 
+    model_params = [[0, 0, 0, 0, 0, 2e-14+0j, 0, 3, 2, 3, 0, 
                      "Non-relativistic White Dwarf"], 
-                    [0, 0, 0, 0, 0, 2e-7+0j, 0, 3, 2, 2, 0, 
+                    [0, 0, 0, 0, 0, 2e-11+0j, 0, 3, 2, 2, 0, 
                      "Relativistic White Dwarf"]]
     
     if model == "CUSTOM":
@@ -380,14 +378,20 @@ def models(model, args=[]):
 
 
 def Relativistic_Terms():
-        
-    r_tov, m_tov, p_tov, rho_tov = TOV_solver(ir=[5.067e12, 0.13169421547674232/(1.9733e-16 * 1e-3 / 6371)], 
+    rho_center =  2e-7+0j        # 2e-14+0j       # 2e-7+0j
+    skaala = 0.13169421547674232  # 4.284971901021712         # 0.13169421547674232
+    kerroin = 0.9 # kuinka lähellä ollaan tähden keskipistettä
+    rho_center_si = '{:0.2e}'.format(rho_center.real * 2.0852e37)
+    R_koko = '{:0.2e}'.format(skaala)
+    
+    
+    r_tov, m_tov, p_tov, rho_tov = TOV_solver(ir=[5.067e12, kerroin*(skaala/(1.9733e-16 * 1e-3 / 6371))], 
             n=0, 
             R_body=0, 
             kappa_choise=0, 
             rho_K=0, 
             p_K=0, 
-            rho_c=2e-7+0j, 
+            rho_c=rho_center, 
             p_c=0, 
             a=3, 
             eos_choise=2, 
@@ -395,13 +399,13 @@ def Relativistic_Terms():
             interpolation=0, 
             body="TOV White dwarf")
     
-    r_newt, m_newt, p_newt, rho_newt = TOV_solver(ir=[5.067e12, 0.13169421547674232/(1.9733e-16 * 1e-3 / 6371)], 
+    r_newt, m_newt, p_newt, rho_newt = TOV_solver(ir=[5.067e12, kerroin*(skaala/(1.9733e-16 * 1e-3 / 6371))], 
             n=0, 
             R_body=0, 
             kappa_choise=0, 
             rho_K=0, 
             p_K=0, 
-            rho_c=2e-7+0j, 
+            rho_c=rho_center, 
             p_c=0, 
             a=3, 
             eos_choise=2, 
@@ -409,10 +413,11 @@ def Relativistic_Terms():
             interpolation=0, 
             body="NEWT White dwarf")
     
-    Delta_Rho = rho_tov[:-1] / rho_newt[:-1]
+    Delta_Rho = rho_newt[:-1] / rho_tov[:-1]
     
-    graph(r_newt[:-1], Delta_Rho, plt.plot, "Ero", "Säde",
-          "Energiatiheys", 'linear', "Newtonilaisen ja relativistisen teorian ero", 1, 1)
+    graph(np.flip(r_newt[:-1])/skaala, Delta_Rho, plt.plot, 
+          fr'Teorioiden välinen suhde keskipisteen energiatiheydellä' '\n' fr'$\rho_{"c"}$ = {rho_center_si}' r' $\frac{\mathrm{J}}{\mathrm{m}^{3}}$' '\n' r'$R_{WD}$' fr' = {R_koko}' r' $R_{Earth}$', 
+          r'Säde, r ($R_{WD}$)', r'$\frac{\rho_{newt}}{\rho_{tov}}$', 'linear', 'log', "", 1, 1)
     
     return
 

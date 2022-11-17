@@ -13,7 +13,7 @@ Yleisiä funktioita hyötykäyttöön. // General functions for utility use.
 
 """
 
-def graph(x, y, style, label, xlabel, ylabel, scale, title, new=0, show=0):
+def graph(x, y, style, label, xlabel, ylabel, xscale, yscale, title, new=0, show=0):
     """
     Generates graph with given parameters.
 
@@ -50,8 +50,8 @@ def graph(x, y, style, label, xlabel, ylabel, scale, title, new=0, show=0):
     
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.xscale(scale) 
-    plt.yscale(scale)
+    plt.xscale(xscale) 
+    plt.yscale(yscale)
     plt.title(title)
     plt.legend()
     if show == 1:
