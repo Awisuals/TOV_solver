@@ -7,7 +7,6 @@ Created on Wed Oct  5  2022
 import numpy as np
 import scipy.constants as sc
 import natpy as nat
-
 """
 Määritetään Tolman-Oppenheimer-Volkoff - yhtälöt (m, p, EoS), 
 jotka ratkaisemalla saadaan kuvattua tähden rakenne.
@@ -92,27 +91,52 @@ def EoS_p2r(p, Gamma, Kappa):
 
 
 def EoS_degelgas(rho):
+    """
+    Degenerate electron gas equation of state.
+
+    Parameters
+    ----------
+    rho : float
+        Pressure.
+
+    Returns
+    -------
+    float
+        Pressure from given energy density.
+    """
+    # Tilanyhtälön vakkioita // Equation of state constants
     m_e = nat.convert(sc.electron_mass * nat.kg, nat.GeV).value
     m_p = nat.convert(sc.proton_mass * nat.kg, nat.GeV).value
     a = (m_e**4)/(3*np.pi**2)
     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
-    def x(rho):
-        return b*(rho)**(1/3)
-    # def f(x):
-        # return (1/3)*x**3*(1+x**2)**(1/2)*(2*x**3-3)+np.log(x+(1+x**2)**(1/2))
-    def f(x):
-        return (1/8)*(x*(1+x**2)**(1/2)*(2*x**2-3)+3*np.log(x+(1+x**2)**(1/2)))
-    # print(a, b)
+    # Tilanyhtälö // Equation of state
+    x = lambda rho : b*(rho)**(1/3)
+    f = lambda x : (1/8)*(x*(1+x**2)**(1/2)*(2*x**2-3)+3*np.log(x+(1+x**2)**(1/2)))
     return a*f(x(rho))
 
 
 def Eos_degelgas_deriv(rho):
+    """
+    Degenerate electron gas equation of state derivate.
+    dp/drho.
+    
+    Parameters
+    ----------
+    rho : float
+        Energy density.
+
+    Returns
+    -------
+    float
+        Derivate value.
+    """    
+    # Vakioita // Constants
     m_e = nat.convert(sc.electron_mass * nat.kg, nat.GeV).value
     m_p = nat.convert(sc.proton_mass * nat.kg, nat.GeV).value
     a = (m_e**4)/(3*np.pi**2)
     b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
+    # Derivaatta // derivate
     x = lambda y: b*y**(1/3)
-    # dpdrho = a*b*(3*rho**(2/3))**(-1)*((14*x(rho)**7+12*x(rho)**5-12*x(rho)**4-9*x(rho)**2+3)/(3*(x(rho)**2+1)**(1/2)))
     dpdrho = (a*b)/(3*rho**(2/3))*((x(rho)**4)/((1+x(rho)**2)**(1/2)))
     return dpdrho
 
@@ -141,41 +165,41 @@ def EoS_choiser(choise, interpolation=0., Gamma=0., Kappa=0., p=0., rho=0.):
     if choise == 0:
         returnable = EoS_p2r(p, Gamma, Kappa) # Energy density
     if choise == 1:
-        returnable = interpolation # EoS_cd_p2rho(interpolation, p) # Energy density # TODO add interpolate functions and params
+        # TODO add interpolate functions and params
+        returnable = interpolation # EoS_cd_p2rho(interpolation, p) # Energy density 
     if choise == 2:
         returnable = EoS_degelgas(rho) # Pressure
-    # print("\n EoS choiser value from function EoS_choiser: \n " + str(returnable))
     return returnable
 
 
 def TOV_choiser(choise, m=0., p=0., rho=0., r=0.):
-    """_summary_
+    """
+    Chooses between different tov functions.
 
     Parameters
     ----------
-    choise : _type_
-        _description_
-    m : _type_
-        _description_
-    p : _type_
-        _description_
-    rho : _type_
-        _description_
-    r : _type_
-        _description_
+    choise : int
+        Chooses function:
+            choise=0 dpdr tov
+            choise=1 dpdr newt
+            choise=2 drhodr tov
+            choise=3 drhodr newt
+    m : float
+        Mass.
+    p : float
+        Pressure.
+    rho : float
+        Energy density.
+    r : float
+        Radius.
 
     Returns
     -------
-    _type_
-        _description_
+    float
+        Value for chosen hydrostatic equilibrium equation deriv.
     """
+    # Gravitational constant in GeV^-2.
     G = 6.707113e-39
-    
-    m_e = nat.convert(sc.electron_mass * nat.kg, nat.eV).value
-    m_p = nat.convert(sc.proton_mass * nat.kg, nat.eV).value
-    a = (m_e**4)/(8*np.pi**2)
-    b = ((3*np.pi**2)/(2*m_p*m_e**3))**(1/3)
-
     if choise == 0:
         # dpdr tov
         tov = -(rho+p)*(m + 4*np.pi*r**3*p)/(r*(r-2*m))
@@ -188,6 +212,4 @@ def TOV_choiser(choise, m=0., p=0., rho=0., r=0.):
     if choise == 3:
         # drhodr newt.
         tov = (-(G*m*rho)/(r**2))*(Eos_degelgas_deriv(rho))**(-1)
-    
-    # print("\n TOV choiser value from function TOV_choiser: \n " + str(tov))
     return tov

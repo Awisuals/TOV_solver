@@ -38,24 +38,22 @@ Mass-Radius - relation.
 """
 
 def MR_relaatio(rho_min1, rho_min2, rho_max, N_MR1, N_MR2):
-    """
-    Solves mass-radius - relation.
+    """Solves mass-radius - relation.
 
     Parameters
     ----------
-    rho_min : Float
-        Lower limit of central energy densities.
-    rho_max : Float
+    rho_min1 : float
+        Lower limit of central energy densities for bigger graph.
+    rho_min2 : float
+        Lower limit of central energy densities for inset graph.
+    rho_max : float
         Higher limit of central energy densities.
-
-    Returns
-    -------
-    R : Array
-        Radiuses of star sequense.
-    M : Array
-        Masses of star sequense.
-
-    """
+    N_MR1 : int
+        Bigger graph points.
+    N_MR2 : int
+        Inset graph points.
+    """    
+    
     # Build N_MR1 or N_MR2 amount of star models
     rhospan1 = np.logspace(np.log10(rho_min1), np.log10(rho_max), N_MR1)
     rhospan2 = np.logspace(np.log10(rho_min2), np.log10(rho_max), N_MR2)
@@ -155,7 +153,6 @@ def MR_relaatio(rho_min1, rho_min2, rho_max, N_MR1, N_MR2):
     # Plottaa massa-säde - relaation. 
     # //
     # Pplot the mass-radius relation.
-
     fig, ax1 = plt.subplots() 
     axins1 = inset_axes(ax1, width='30%', height='40%', loc='lower right', 
                         bbox_to_anchor=(-0.12, 0.3, 1.1, 1.2),
@@ -163,7 +160,6 @@ def MR_relaatio(rho_min1, rho_min2, rho_max, N_MR1, N_MR2):
     
     ax1.plot(R_tov, M_tov, color='b', label=fr'TOV')
     ax1.plot(R_newt, M_newt, color='red', label='Newtonilainen' , linestyle='--')
-
     ax1.set(# title="a)", title_position='left',
             xlabel=r'Säde, r ($R_{Earth}$)', 
             ylabel= r'Massa, m ($M_{Sun}$)', 
@@ -174,13 +170,11 @@ def MR_relaatio(rho_min1, rho_min2, rho_max, N_MR1, N_MR2):
     
     axins1.plot(R_tov_zoom, M_tov_zoom, color='b')
     axins1.plot(R_newt_zoom, M_newt_zoom, color='red', linestyle='--')
-    
     axins1.set(# title="a)", title_position='left',
             xscale="linear", yscale="log")
     axins1.grid()
     
     plt.show()
-    
     return
 
 MR_relaatio(2e-14+0j, 8e-10+0j, 8e-6+0j, 50, 75)
